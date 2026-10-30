@@ -10,17 +10,19 @@ runs on the machine that builds the stick. `stick/CLAUDE.md` is what Claude foll
 2. Turn the keyboard layout into a Linux console keymap name, such as `fi`, `us`, `uk`,
    `de-latin1` or `sv-latin1`. Confirm the keymap and the timezone with the person, one question
    each, recommended answer first.
-3. Ask which device they will log in from over SSH, since the stick has to trust that device's
-   key. When this machine is the one being reinstalled, its own key goes with the reinstall, so
-   recommend `--github-keys <user>` with their GitHub user (`gh api user --jq .login`): it allows
-   every key they registered on GitHub. A key of this machine that exists only in the SSH agent
-   goes to a file with `ssh-add -L | sed -n <n>p > <scratch>/key.pub`. Without any key, logging in
-   from another device needs a root password that the person sets on the stick with `passwd`.
-4. Ask whether the stick should carry a Claude login token. Recommend no: anyone holding the stick
-   before its first boot can use the person's Claude plan for up to a year. Logging in over SSH
-   from another device needs no token. If they want one, they run `claude setup-token` and then
-   `scripts/save-token.sh` in their own terminal. You never run either, and never read, print or
-   copy the token file; pass its path to `--token-file`.
+3. Ask whether the stick should carry a Claude login token, so that Claude on the stick starts
+   logged in. Recommend yes: the live console cannot copy a login link. Say the cost once: until
+   the stick first boots, whoever holds it holds a token to the person's Claude plan, valid for a
+   year; on first boot the stick moves it into RAM and erases it from itself, and
+   `write-stick.sh` deletes the ISO that holds it. If yes, the person runs
+   `<repo>/scripts/save-token.sh` in their own terminal: it runs `claude setup-token` and asks for
+   the token without showing it. You never run it, and never read, print or copy the token file;
+   pass its path, `~/.config/ai-arch/token`, to `--token-file`.
+4. Ask whether they also want to log in over SSH from another device. Recommend no unless they
+   bring one up. If yes, the stick has to trust that device's key: `--github-keys <user>` with
+   their GitHub user (`gh api user --jq .login`) allows every key they registered on GitHub, and
+   `--ssh-key <file>` allows one. A key that exists only in the SSH agent goes to a file with
+   `ssh-add -L | sed -n <n>p > <scratch>/key.pub`.
 5. Say that the ISO is about 1.6 GB before the first download, and ask first on a metered or
    mobile connection.
 6. Run `scripts/build-iso.sh --keymap <keymap> --timezone <zone> [--ssh-key <file>]
@@ -30,9 +32,9 @@ runs on the machine that builds the stick. `stick/CLAUDE.md` is what Claude foll
    and erases a disk: `<repo>/scripts/write-stick.sh <iso>`. Never run it yourself, and never run
    `dd` or anything else that writes to a disk.
 8. Tell them how to boot it: the firmware's boot menu key (often F11, F12 or F8), Secure Boot off,
-   since the official ISO does not support it. About a minute after boot, they run
-   `ssh root@archiso.local` from the other device and type `ai-arch`, or type `ai-arch` at the
-   machine itself.
+   since the official ISO does not support it. About a minute after boot, they type `ai-arch` at
+   the machine, or with SSH set up, run `ssh root@archiso.local` from the other device and type it
+   there.
 
 ## Rules
 
