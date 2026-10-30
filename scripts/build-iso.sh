@@ -15,19 +15,23 @@ timezone=
 ssh_key=
 github_user=
 token_file=
+desktop=no
+firefox=no
 cidata_only=
 
 usage() {
   cat <<'EOF'
 Usage: build-iso.sh --keymap NAME --timezone ZONE [--ssh-key FILE.pub]
-                    [--github-keys USER] [--token-file FILE] [--out DIR]
-                    [--cidata-only]
+                    [--github-keys USER] [--token-file FILE] [--desktop]
+                    [--firefox] [--out DIR] [--cidata-only]
 
   --keymap       console keymap for the live system, such as fi, us or de-latin1
   --timezone     zone name, such as Europe/Helsinki
   --ssh-key      public key that may log in as root over SSH
   --github-keys  also allow every public key of this GitHub user
   --token-file   file holding a token from `claude setup-token`
+  --desktop      run Claude in the Claude desktop app on the stick, not the console
+  --firefox      add Firefox to the desktop, for signing in with Google or SSO
   --out          folder for the ISO (default ~/Downloads/ai-arch)
   --cidata-only  build only the small CIDATA image, to check what goes on the stick
 EOF
@@ -45,6 +49,8 @@ while (($#)); do
     --ssh-key) ssh_key=${2:?--ssh-key needs a file}; shift 2 ;;
     --github-keys) github_user=${2:?--github-keys needs a user}; shift 2 ;;
     --token-file) token_file=${2:?--token-file needs a file}; shift 2 ;;
+    --desktop) desktop=yes; shift ;;
+    --firefox) firefox=yes; shift ;;
     --out) out=${2:?--out needs a folder}; shift 2 ;;
     --cidata-only) cidata_only=1; shift ;;
     -h | --help) usage; exit 0 ;;
@@ -54,6 +60,7 @@ done
 
 [[ $keymap =~ ^[A-Za-z0-9_.-]+$ ]] || die "give --keymap, such as fi or us"
 [[ $timezone =~ ^[A-Za-z0-9_+/-]+$ ]] || die "give --timezone, such as Europe/Helsinki"
+[[ $firefox == no || $desktop == yes ]] || die "--firefox needs --desktop"
 pubkeys=()
 add_pubkey() {
   [[ $1 =~ ^(ssh|ecdsa|sk)-[A-Za-z0-9@.-]+\ [A-Za-z0-9+/=]+(\ [^\']*)?$ ]] ||
@@ -128,6 +135,8 @@ write_files:
     content: |
       KEYMAP=$keymap
       TIMEZONE=$timezone
+      DESKTOP=$desktop
+      FIREFOX=$firefox
   - path: /etc/motd
     append: true
     content: |

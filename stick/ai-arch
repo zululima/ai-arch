@@ -1,11 +1,26 @@
 #!/usr/bin/env bash
 # Runs on the Arch live system. cloud-init calls it once with --prepare to
-# install Claude Code; the person then types ai-arch to start the install.
+# install Claude Code, and the Claude desktop app when the stick was built with
+# it; the person then types ai-arch to start the install.
 set -uo pipefail
 
 export HOME=/root
 workdir=/root/ai-arch
 token_copy=/run/ai-arch/token
+desktop_ready=/run/ai-arch/desktop-ready
+desktop_user=claude
+desktop_repo=https://downloads.claude.ai/claude-desktop
+# Anthropic's apt signing key, as the Claude Desktop on Linux docs give it.
+desktop_key_fpr=31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE
+# Arch names for what the app's .deb depends on, without the virtual machine
+# that only Cowork uses.
+desktop_packages=(
+  cage sudo ttf-dejavu gtk3 nss alsa-lib at-spi2-core libcups libnotify libsecret
+  libxtst libpipewire mesa bubblewrap socat libseccomp libcap-ng xdg-utils
+  xdg-desktop-portal xdg-desktop-portal-gtk
+)
+
+conf() { sed -n "s/^$1=//p" /etc/ai-arch.conf 2>/dev/null; }
 
 online() { curl -fsS --max-time 10 -o /dev/null https://claude.ai/install.sh; }
 
@@ -14,6 +29,87 @@ install_claude() {
   online || return 1
   curl -fsSL https://claude.ai/install.sh | bash || return 1
   ln -sf /root/.local/bin/claude /usr/local/bin/claude
+}
+
+# Takes the newest .deb from Anthropic's apt repository, checked the way apt
+# checks it: InRelease signed by the pinned key, Packages and the .deb by sha256.
+install_desktop_app() (
+  set -e
+  tmp=$(mktemp -d)
+  trap 'gpgconf --homedir "$tmp/gnupg" --kill all 2>/dev/null; rm -rf "$tmp"' EXIT
+  apt=$desktop_repo/apt/stable
+  curl -fsSL -o "$tmp/key.asc" "$desktop_repo/key.asc"
+  curl -fsSL -o "$tmp/InRelease" "$apt/dists/stable/InRelease"
+  mkdir -m 700 "$tmp/gnupg"
+  gpg --homedir "$tmp/gnupg" --quiet --import "$tmp/key.asc"
+  status=$(gpg --homedir "$tmp/gnupg" --status-fd 1 --output "$tmp/Release" \
+    --decrypt "$tmp/InRelease" 2>/dev/null) || true
+  grep -q "^\[GNUPG:\] VALIDSIG .*$desktop_key_fpr" <<<"$status" ||
+    { echo "ai-arch: the app repository is not signed by $desktop_key_fpr"; exit 1; }
+  sum=$(awk '/^SHA256:/ {s = 1; next} /^[^ ]/ {s = 0}
+    s && $3 == "main/binary-amd64/Packages" {print $1}' "$tmp/Release")
+  curl -fsSL -o "$tmp/Packages" "$apt/dists/stable/main/binary-amd64/Packages"
+  [[ -n $sum && $(sha256sum <"$tmp/Packages") == "$sum  -" ]] ||
+    { echo 'ai-arch: the app package index does not match its signed checksum'; exit 1; }
+  newest=$(awk -v RS= '{f = s = ""
+    for (i = 1; i < NF; i++) {if ($i == "Filename:") f = $(i + 1); if ($i == "SHA256:") s = $(i + 1)}
+    if (f && s) print f, s}' "$tmp/Packages" | sort -V | tail -n 1)
+  deb=${newest% *}
+  echo "ai-arch: downloading ${deb##*/}"
+  curl -fL --retry 3 -o "$tmp/app.deb" "$apt/$deb"
+  [[ $(sha256sum <"$tmp/app.deb") == "${newest#* }  -" ]] ||
+    { echo "ai-arch: ${deb##*/} does not match its checksum"; exit 1; }
+  bsdtar -xOf "$tmp/app.deb" 'data.tar*' | bsdtar -xpf - -C /
+)
+
+# The app refuses to run as root, so it runs as its own user in cage, a kiosk
+# compositor, started the way cage's wiki starts it from systemd.
+install_desktop() {
+  [[ -e $desktop_ready ]] && return 0
+  online || return 1
+  local packages=("${desktop_packages[@]}")
+  [[ $(conf FIREFOX) == yes ]] && packages+=(firefox desktop-file-utils)
+  pacman -Sy --needed --noconfirm "${packages[@]}" || return 1
+  find /var/cache/pacman/pkg -type f -delete
+  install_desktop_app || return 1
+  command -v update-desktop-database >/dev/null && update-desktop-database -q
+
+  id "$desktop_user" >/dev/null 2>&1 || useradd -m -G wheel,video,input,audio "$desktop_user" || return 1
+  echo "$desktop_user ALL=(ALL:ALL) NOPASSWD: ALL" >/etc/sudoers.d/ai-arch
+  chmod 440 /etc/sudoers.d/ai-arch
+  install -d -o "$desktop_user" -g "$desktop_user" "/home/$desktop_user/ai-arch"
+  install -m 644 -o "$desktop_user" -g "$desktop_user" "$workdir/CLAUDE.md" "/home/$desktop_user/ai-arch/"
+
+  cat >/etc/pam.d/ai-arch-desktop <<'EOF'
+auth     required pam_unix.so nullok
+account  required pam_unix.so
+session  required pam_unix.so
+session  required pam_systemd.so
+EOF
+  cat >/etc/systemd/system/ai-arch-desktop.service <<EOF
+[Unit]
+Description=Claude desktop app for ai-arch
+Wants=dbus.socket systemd-logind.service
+After=systemd-user-sessions.service dbus.socket systemd-logind.service getty@tty7.service
+Conflicts=getty@tty7.service
+
+[Service]
+ExecStart=/usr/bin/cage -s -- /usr/bin/claude-desktop --ozone-platform=wayland
+ExecStartPost=+/usr/bin/chvt 7
+User=$desktop_user
+WorkingDirectory=/home/$desktop_user/ai-arch
+UtmpIdentifier=tty7
+UtmpMode=user
+TTYPath=/dev/tty7
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty-fail
+PAMName=ai-arch-desktop
+EOF
+  systemctl daemon-reload
+  install -d -m 700 "${desktop_ready%/*}"
+  touch "$desktop_ready"
 }
 
 # The token file on the stick is read once, kept in RAM and removed from the
@@ -63,11 +159,18 @@ EOF
   read -rp 'Press Enter to log in on this console anyway, or Ctrl+C to stop. ' _
 }
 
+desktop=$(conf DESKTOP)
+
 if [[ ${1:-} == --prepare ]]; then
-  if install_claude >/var/log/ai-arch-prepare.log 2>&1; then
-    wall 'ai-arch: Claude Code is ready. Type ai-arch to start the install.'
-  else
+  load_token
+  if ! install_claude >/var/log/ai-arch-prepare.log 2>&1; then
     wall 'ai-arch: no internet yet. Plug in a cable or connect with iwctl, then type ai-arch.'
+  elif [[ $desktop != yes ]]; then
+    wall 'ai-arch: Claude Code is ready. Type ai-arch to start the install.'
+  elif install_desktop >>/var/log/ai-arch-prepare.log 2>&1; then
+    wall 'ai-arch: the Claude desktop app is ready. Type ai-arch to open it.'
+  else
+    wall 'ai-arch: the desktop app did not install; see /var/log/ai-arch-prepare.log. Type ai-arch --console to use Claude Code here.'
   fi
   exit 0
 fi
@@ -77,6 +180,22 @@ until install_claude; do
   echo 'ai-arch: no internet. Plug in a cable, or connect to Wi-Fi with iwctl.'
   read -rp 'Press Enter to try again, or Ctrl+C to stop. ' _
 done
+
+if [[ $desktop == yes && ${1:-} != --console ]]; then
+  install_desktop || { echo 'ai-arch: the desktop app did not install. Type ai-arch --console to use Claude Code here.'; exit 1; }
+  cat <<'EOF'
+
+The Claude desktop app opens on this screen.
+  1. Sign in. With email, open the sign-in link on your phone and type the code it shows.
+  2. Open the Code tab, pick the folder ai-arch in your home folder and say: start
+
+Ctrl+Alt+F1 comes back to this console, Ctrl+Alt+F7 to the app.
+ai-arch --console starts Claude Code on this console instead.
+EOF
+  read -rp 'Press Enter to open the app. ' _
+  systemctl restart ai-arch-desktop
+  exit 0
+fi
 
 load_token
 if [[ -z ${CLAUDE_CODE_OAUTH_TOKEN:-} && -z ${SSH_CONNECTION:-} && ! -s /root/.claude/.credentials.json ]]; then

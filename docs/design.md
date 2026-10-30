@@ -32,10 +32,38 @@ in that skips the link.
   for model requests only, Claude Code manages it through `/login` and `/logout` only, and macOS
   keeps it in the Keychain instead. Two machines holding one login may also log each other out
   when one of them refreshes it; that is not checked.
-- **A browser on the stick.** The ISO's text browser, lynx, cannot run the JavaScript that the
-  claude.ai login page needs. The `claude-desktop` package in the AUR repackages Anthropic's
-  official Debian package and would bring a real browser view, but it needs a graphical session,
-  a user other than root and an AUR build on every boot.
+- **The desktop app (optional).** The app signs in on its own, in its window; see below. The
+  ISO's text browser, lynx, cannot run the JavaScript that the claude.ai login page needs.
+
+## The desktop app on the stick
+
+With `--desktop`, the stick runs Claude in Anthropic's desktop app instead of on the console. It
+gives Claude a browser, which the ArchWiki needs, since it answers plain downloads with a bot
+check. Nothing of it reaches the installed system.
+
+- **Source.** Anthropic publishes the app for Debian and Ubuntu only and sends Arch users to the
+  CLI, so on Arch it runs unsupported. The stick takes the newest `.deb` from Anthropic's apt
+  repository and checks it the way apt does: `InRelease` signed by the key the docs pin, then
+  `Packages` and the `.deb` by sha256. It unpacks the files with `bsdtar` and installs the
+  libraries the package depends on with pacman, leaving out the virtual machine that only Cowork
+  uses. The AUR package `claude-desktop` does the same repackaging, but building it would need
+  `base-devel` in RAM on every boot.
+- **Display.** No desktop environment: cage, a small Wayland kiosk compositor, shows the app
+  full screen. The app refuses to run as root, so a systemd unit starts cage as the user
+  `claude` on tty7 with a PAM session, as cage's wiki describes. That user has sudo without a
+  password, since the install needs root. `cage -s` lets Ctrl+Alt+F1 and Ctrl+Alt+F2 reach the
+  consoles.
+- **Sign-in.** The token from `setup-token` only works for the CLI, so the app signs in itself on
+  every boot; with no keyring it keeps the sign-in until the app closes. With email, a
+  third-party guide says the sign-in link opened on another device shows a code to type into the
+  app; that is not checked. Google and SSO open a browser, so `--firefox` adds Firefox.
+- **Cost.** In an amd64 Arch container, the app and its libraries were 122 MB of packages and a
+  161 MB `.deb`, took about 1.1 GB once unpacked, and the running app about 1.4 GB more. The
+  ISO already has some of those libraries.
+- **Tested.** In that container, the prepare step installed and verified the app, and cage on a
+  headless output showed its start screen. Docker blocks the app's sandbox, so that test ran
+  with `--no-sandbox`; the stick runs with the sandbox. The systemd unit, the VT switch and the
+  sign-in have not run.
 
 ## Memory
 

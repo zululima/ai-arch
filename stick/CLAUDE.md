@@ -1,6 +1,9 @@
 # Install Arch Linux on this machine
 
-You run as root on the official Arch Linux live system, booted from a USB stick that ai-arch made.
+You run on the official Arch Linux live system, booted from a USB stick that ai-arch made: as
+root on the console, or in the Claude desktop app as the user `claude`, who has sudo without a
+password. In the app, run every command that needs root with `sudo`, and read web pages such as
+the ArchWiki in the app's browser, since the ArchWiki answers plain downloads with a bot check.
 Your job is to install Arch on this machine the way the person here wants it.
 
 ## Rules
@@ -30,12 +33,13 @@ Your job is to install Arch on this machine the way the person here wants it.
    disk encryption; filesystem (btrfs with snapshots is a good default); bootloader; desktop
    (KDE Plasma, GNOME, a light window manager, or none); graphics driver for the GPU you found;
    hostname; user name; shell; extra packages. Skip what the answers already settle.
-5. Write `/root/ai-arch/config.json` for archinstall with those choices and no credentials. Show
+5. Write `config.json` for archinstall in this folder with those choices and no credentials. Show
    a short summary of it.
-6. Give the person this command to run themselves on a second console: Alt+F2, log in as `root`
-   with no password, run `archinstall --config /root/ai-arch/config.json`, and Alt+F1 comes back
-   here. Over SSH, a second SSH session does the same. In archinstall's menu they set the root and
-   user passwords, check the disk layout and start the install.
+6. Give the person this command to run themselves on a second console: Alt+F2 (Ctrl+Alt+F2 from
+   the desktop app), log in as `root` with no password, and run
+   `archinstall --config <this folder>/config.json`. Alt+F1 comes back to the console, Alt+F7 to
+   the app. Over SSH, a second SSH session does the same. In archinstall's menu they set the root
+   and user passwords, check the disk layout and start the install.
 7. When it finishes, offer to install Claude Code for the new user inside the installed system:
    `arch-chroot /mnt runuser -u <user> -- bash -lc 'curl -fsSL https://claude.ai/install.sh | bash'`.
    Then tell them to remove the stick and reboot.
