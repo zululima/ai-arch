@@ -3,6 +3,7 @@
 An Arch Linux install USB stick that starts Claude Code on boot. It holds the latest official ISO,
 unchanged, plus a small partition with your keyboard layout, timezone and a Claude login token.
 Type `ai-arch` on the stick and Claude asks how you want Arch, then prepares archinstall for you.
+It can also put Claude Code and the Claude desktop app on the new system.
 
 ## Start
 

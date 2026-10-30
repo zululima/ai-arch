@@ -29,7 +29,14 @@ Your job is to install Arch on this machine the way the person here wants it.
 4. Ask, in this order: the target disk; whether to keep anything on it (dual boot) or erase it;
    disk encryption; filesystem (btrfs with snapshots is a good default); bootloader; desktop
    (KDE Plasma, GNOME, a light window manager, or none); graphics driver for the GPU you found;
-   hostname; user name; shell; extra packages. Skip what the answers already settle.
+   with a desktop, whether to add the Claude desktop app (step 8); hostname; user name; shell;
+   extra packages, where with a desktop you recommend a web browser, since logging in to Claude
+   goes through claude.ai. Skip what the answers already settle.
+
+   The desktop app needs a graphical session, a keyring and a portal backend. `plasma-meta` and
+   the `gnome` group bring all three. With a window manager or the minimal `plasma-desktop`,
+   check for `gnome-keyring` or `kwallet` and an `xdg-desktop-portal-*` backend, add what is
+   missing and say so.
 5. Write `/root/ai-arch/config.json` for archinstall with those choices and no credentials. Show
    a short summary of it.
 6. Give the person this command to run themselves on a second console: Alt+F2, log in as `root`
@@ -38,4 +45,18 @@ Your job is to install Arch on this machine the way the person here wants it.
    user passwords, check the disk layout and start the install.
 7. When it finishes, offer to install Claude Code for the new user inside the installed system:
    `arch-chroot /mnt runuser -u <user> -- bash -lc 'curl -fsSL https://claude.ai/install.sh | bash'`.
-   Then tell them to remove the stick and reboot.
+8. If they chose the desktop app, install the AUR package `claude-desktop`. A person maintains
+   it, not Anthropic: it repackages Anthropic's official Debian package and, on x86_64, pulls in
+   QEMU for Cowork's virtual machine. Read its `PKGBUILD` first and go on only if the `.deb`
+   still comes from `downloads.claude.ai` with a sha256 sum. makepkg refuses to run as root, so,
+   all inside `arch-chroot /mnt`:
+   - clone `https://aur.archlinux.org/claude-desktop.git` into `/home/<user>/aur/` as the user,
+     with `runuser -u <user> --`;
+   - as root, `pacman -S --needed --noconfirm base-devel` and, with `--asdeps`, every `depends`
+     in its `.SRCINFO`, plus the keyring and portal backend from step 4 if the desktop lacks them;
+   - build it as the user with `makepkg` in that folder, then `pacman -U` the package file as
+     root.
+
+   Tell them it updates only when rebuilt, with `git pull` and `makepkg -si` in that folder,
+   which Claude Code on the new system can do for them.
+9. Tell them to remove the stick and reboot.
