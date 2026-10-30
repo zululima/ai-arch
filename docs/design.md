@@ -16,9 +16,11 @@ the result goes stale.
 
 ## Logging in to Claude on the stick
 
-- **Over SSH from another device (default).** The stick trusts the SSH key chosen at build time,
-  so `ssh root@archiso.local` works from any machine on the same network, and the login link can
-  be copied there. The live console has no clipboard, and the link is too long to type.
+- **Over SSH from another device (default).** The stick trusts the SSH keys chosen at build time,
+  from a file or from `github.com/<user>.keys`, so `ssh root@archiso.local` works from those
+  devices on the same network, and the login link can be copied there. The live console has no
+  clipboard, and the link is too long to type. When the stick is built on the machine it will
+  reinstall, that machine's own key is useless afterwards, so the GitHub list is the easy choice.
 - **A token from `claude setup-token` (optional).** Claude Code documents it for machines without
   a browser: it lasts a year, can only make model requests and is read from
   `CLAUDE_CODE_OAUTH_TOKEN`. The person saves it with `scripts/save-token.sh`, so it never passes

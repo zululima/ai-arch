@@ -13,17 +13,20 @@ out=$HOME/Downloads/ai-arch
 keymap=
 timezone=
 ssh_key=
+github_user=
 token_file=
 cidata_only=
 
 usage() {
   cat <<'EOF'
 Usage: build-iso.sh --keymap NAME --timezone ZONE [--ssh-key FILE.pub]
-                    [--token-file FILE] [--out DIR] [--cidata-only]
+                    [--github-keys USER] [--token-file FILE] [--out DIR]
+                    [--cidata-only]
 
   --keymap       console keymap for the live system, such as fi, us or de-latin1
   --timezone     zone name, such as Europe/Helsinki
   --ssh-key      public key that may log in as root over SSH
+  --github-keys  also allow every public key of this GitHub user
   --token-file   file holding a token from `claude setup-token`
   --out          folder for the ISO (default ~/Downloads/ai-arch)
   --cidata-only  build only the small CIDATA image, to check what goes on the stick
@@ -40,6 +43,7 @@ while (($#)); do
     --keymap) keymap=${2:?--keymap needs a value}; shift 2 ;;
     --timezone) timezone=${2:?--timezone needs a value}; shift 2 ;;
     --ssh-key) ssh_key=${2:?--ssh-key needs a file}; shift 2 ;;
+    --github-keys) github_user=${2:?--github-keys needs a user}; shift 2 ;;
     --token-file) token_file=${2:?--token-file needs a file}; shift 2 ;;
     --out) out=${2:?--out needs a folder}; shift 2 ;;
     --cidata-only) cidata_only=1; shift ;;
@@ -50,12 +54,23 @@ done
 
 [[ $keymap =~ ^[A-Za-z0-9_.-]+$ ]] || die "give --keymap, such as fi or us"
 [[ $timezone =~ ^[A-Za-z0-9_+/-]+$ ]] || die "give --timezone, such as Europe/Helsinki"
-pubkey=
+pubkeys=()
+add_pubkey() {
+  [[ $1 =~ ^(ssh|ecdsa|sk)-[A-Za-z0-9@.-]+\ [A-Za-z0-9+/=]+(\ [^\']*)?$ ]] ||
+    die "$2 does not look like an SSH public key"
+  pubkeys+=("$1")
+}
 if [[ -n $ssh_key ]]; then
   [[ -f $ssh_key ]] || die "no such key file: $ssh_key"
-  pubkey=$(head -n 1 "$ssh_key")
-  [[ $pubkey =~ ^(ssh|ecdsa|sk)-[A-Za-z0-9@.-]+\ [A-Za-z0-9+/=]+(\ [^\']*)?$ ]] ||
-    die "$ssh_key does not look like an SSH public key"
+  add_pubkey "$(head -n 1 "$ssh_key")" "$ssh_key"
+fi
+if [[ -n $github_user ]]; then
+  [[ $github_user =~ ^[A-Za-z0-9-]+$ ]] || die "not a GitHub user name: $github_user"
+  keys=$(curl -fsSL "https://github.com/$github_user.keys") || die "could not read the keys of $github_user"
+  [[ -n $keys ]] || die "$github_user has no public SSH keys on GitHub"
+  while read -r line; do
+    [[ -n $line ]] && add_pubkey "$line" "a key of $github_user"
+  done <<<"$keys"
 fi
 if [[ -n $token_file ]]; then
   [[ -s $token_file ]] || die "token file is missing or empty: $token_file"
@@ -96,8 +111,9 @@ trap 'rm -rf "$work"' EXIT
 build_cidata() {
   {
     echo '#cloud-config'
-    if [[ -n $pubkey ]]; then
-      printf "users:\n  - name: root\n    ssh_authorized_keys:\n      - '%s'\n" "$pubkey"
+    if ((${#pubkeys[@]})); then
+      printf 'users:\n  - name: root\n    ssh_authorized_keys:\n'
+      printf "      - '%s'\n" "${pubkeys[@]}"
     fi
     cat <<EOF
 write_files:
