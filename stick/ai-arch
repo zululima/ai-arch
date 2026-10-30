@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# Runs on the Arch live system. cloud-init calls it once with --prepare to
+# install Claude Code; the person then types ai-arch to start the install.
+set -uo pipefail
+
+export HOME=/root
+workdir=/root/ai-arch
+token_copy=/run/ai-arch/token
+
+online() { curl -fsS --max-time 10 -o /dev/null https://claude.ai/install.sh; }
+
+install_claude() {
+  command -v claude >/dev/null && return 0
+  online || return 1
+  curl -fsSL https://claude.ai/install.sh | bash || return 1
+  ln -sf /root/.local/bin/claude /usr/local/bin/claude
+}
+
+# The token file on the stick is read once, kept in RAM and removed from the
+# stick, so a lost stick no longer carries it.
+load_token() {
+  if [[ ! -s $token_copy && -e /dev/disk/by-label/CIDATA ]]; then
+    local mnt rw=1
+    mnt=$(mktemp -d)
+    if ! mount /dev/disk/by-label/CIDATA "$mnt" 2>/dev/null; then
+      rw=
+      mount -o ro /dev/disk/by-label/CIDATA "$mnt" 2>/dev/null || { rmdir "$mnt"; return 0; }
+    fi
+    if [[ -s $mnt/token ]]; then
+      install -d -m 700 "${token_copy%/*}"
+      (umask 077 && cp "$mnt/token" "$token_copy")
+      if [[ -n $rw ]]; then
+        shred -u "$mnt/token" 2>/dev/null || rm -f "$mnt/token"
+      else
+        echo "ai-arch: could not remove the token from the stick. Erase the stick after the install."
+      fi
+    fi
+    umount "$mnt"
+    rmdir "$mnt"
+  fi
+  if [[ -s $token_copy ]]; then
+    CLAUDE_CODE_OAUTH_TOKEN=$(<"$token_copy")
+    export CLAUDE_CODE_OAUTH_TOKEN
+  fi
+}
+
+login_hint() {
+  local addrs
+  addrs=$(ip -4 -br addr show scope global 2>/dev/null | awk '{sub(/\/.*/, "", $3); print $3}' | paste -sd' ' -)
+  cat <<EOF
+
+Claude will show a login link, and this console cannot copy it.
+The easy way is to log in from another device on the same network:
+
+    ssh root@archiso.local        (or root@ one of: ${addrs:-no address yet})
+
+and type ai-arch there.
+EOF
+  if [[ ! -s /root/.ssh/authorized_keys ]]; then
+    echo "This stick has no SSH key, so first set a root password here with: passwd"
+  fi
+  echo
+  read -rp 'Press Enter to log in on this console anyway, or Ctrl+C to stop. ' _
+}
+
+if [[ ${1:-} == --prepare ]]; then
+  if install_claude >/var/log/ai-arch-prepare.log 2>&1; then
+    wall 'ai-arch: Claude Code is ready. Type ai-arch to start the install.'
+  else
+    wall 'ai-arch: no internet yet. Plug in a cable or connect with iwctl, then type ai-arch.'
+  fi
+  exit 0
+fi
+
+cloud-init status --wait >/dev/null 2>&1
+until install_claude; do
+  echo 'ai-arch: no internet. Plug in a cable, or connect to Wi-Fi with iwctl.'
+  read -rp 'Press Enter to try again, or Ctrl+C to stop. ' _
+done
+
+load_token
+if [[ -z ${CLAUDE_CODE_OAUTH_TOKEN:-} && -z ${SSH_CONNECTION:-} && ! -s /root/.claude/.credentials.json ]]; then
+  login_hint
+fi
+
+cd "$workdir" || exit 1
+exec claude "Read CLAUDE.md in this folder and start."
