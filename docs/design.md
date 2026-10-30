@@ -35,18 +35,7 @@ in that skips the link.
 - **A browser on the stick.** The ISO's text browser, lynx, cannot run the JavaScript that the
   claude.ai login page needs. The `claude-desktop` package in the AUR repackages Anthropic's
   official Debian package and would bring a real browser view, but it needs a graphical session,
-  a user other than root and an AUR build on every boot. The installed system gets it instead.
-
-## The desktop app on the installed system
-
-The stick offers the AUR package `claude-desktop` when the person picks a desktop. Its `PKGBUILD`
-takes the file payload of Anthropic's `.deb` from `downloads.claude.ai`, checked by sha256, and
-leaves out the Debian install scripts. The app is Electron, so it needs a graphical session; it
-keeps its login through the Secret Service or KWallet and talks to the desktop through
-`xdg-desktop-portal`. `plasma-meta` brings `kwallet-pam` and `xdg-desktop-portal-kde`, and the
-`gnome` group brings `gnome-keyring` and `xdg-desktop-portal-gnome`; a window manager needs them
-added. On x86_64 the package also depends on `qemu-system-x86` and `edk2-ovmf`, for the virtual
-machine that Cowork runs in. With no AUR helper, it updates only when rebuilt.
+  a user other than root and an AUR build on every boot.
 
 ## Memory
 
