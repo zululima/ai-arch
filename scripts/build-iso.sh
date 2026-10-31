@@ -16,15 +16,16 @@ timezone=
 ssh_key=
 github_user=
 token_file=
-desktop=no
 firefox=no
 cidata_only=
+check_tools=
 
 usage() {
   cat <<'EOF'
 Usage: build-iso.sh --keymap NAME --xkb-layout NAME --timezone ZONE
-                    [--ssh-key FILE.pub] [--github-keys USER] [--token-file FILE]
-                    [--desktop] [--firefox] [--out DIR] [--cidata-only]
+                    [--firefox] [--token-file FILE] [--ssh-key FILE.pub]
+                    [--github-keys USER] [--out DIR] [--cidata-only]
+       build-iso.sh --check-tools
 
   --keymap       console keymap for the live system, such as fi, us or de-latin1
   --xkb-layout   keyboard layout for the desktop app and the installed desktop,
@@ -33,10 +34,10 @@ Usage: build-iso.sh --keymap NAME --xkb-layout NAME --timezone ZONE
   --ssh-key      public key that may log in as root over SSH
   --github-keys  also allow every public key of this GitHub user
   --token-file   file holding a token from `claude setup-token`
-  --desktop      run Claude in the Claude desktop app on the stick, not the console
-  --firefox      add Firefox to the desktop, for signing in with Google or SSO
+  --firefox      add Firefox to the stick, for signing in with Google or SSO
   --out          folder for the ISO (default ~/Downloads/ai-arch)
   --cidata-only  build only the small CIDATA image, to check what goes on the stick
+  --check-tools  only check that the tools for a build are installed
 EOF
 }
 
@@ -53,19 +54,43 @@ while (($#)); do
     --ssh-key) ssh_key=${2:?--ssh-key needs a file}; shift 2 ;;
     --github-keys) github_user=${2:?--github-keys needs a user}; shift 2 ;;
     --token-file) token_file=${2:?--token-file needs a file}; shift 2 ;;
-    --desktop) desktop=yes; shift ;;
     --firefox) firefox=yes; shift ;;
     --out) out=${2:?--out needs a folder}; shift 2 ;;
     --cidata-only) cidata_only=1; shift ;;
+    --check-tools) check_tools=1; shift ;;
     -h | --help) usage; exit 0 ;;
     *) usage >&2; exit 2 ;;
   esac
 done
 
+need() {
+  local missing=() t
+  for t in "$@"; do
+    command -v "$t" >/dev/null || missing+=("$t")
+  done
+  ((${#missing[@]} == 0)) && return 0
+  echo "build-iso: missing ${missing[*]}. Install them with:" >&2
+  if [[ $(uname -s) == Darwin ]]; then
+    echo "  brew install xorriso mtools dosfstools gnupg" >&2
+  elif command -v pacman >/dev/null; then
+    echo "  sudo pacman -S --needed libisoburn mtools dosfstools gnupg" >&2
+  elif command -v apt-get >/dev/null; then
+    echo "  sudo apt-get install xorriso mtools dosfstools gnupg" >&2
+  elif command -v dnf >/dev/null; then
+    echo "  sudo dnf install xorriso mtools dosfstools gnupg2" >&2
+  fi
+  exit 1
+}
+
+if [[ -n $check_tools ]]; then
+  need curl gpg xorriso mkfs.fat mcopy base64
+  echo "All build tools are installed."
+  exit 0
+fi
+
 [[ $keymap =~ ^[A-Za-z0-9_.-]+$ ]] || die "give --keymap, such as fi or us"
 [[ $xkb_layout =~ ^[a-z0-9_]+(,[a-z0-9_]+)*$ ]] || die "give --xkb-layout, such as fi, us or eu"
 [[ $timezone =~ ^[A-Za-z0-9_+/-]+$ ]] || die "give --timezone, such as Europe/Helsinki"
-[[ $firefox == no || $desktop == yes ]] || die "--firefox needs --desktop"
 pubkeys=()
 add_pubkey() {
   [[ $1 =~ ^(ssh|ecdsa|sk)-[A-Za-z0-9@.-]+\ [A-Za-z0-9+/=]+(\ [^\']*)?$ ]] ||
@@ -87,25 +112,6 @@ fi
 if [[ -n $token_file ]]; then
   [[ -s $token_file ]] || die "token file is missing or empty: $token_file"
 fi
-
-need() {
-  local missing=() t
-  for t in "$@"; do
-    command -v "$t" >/dev/null || missing+=("$t")
-  done
-  ((${#missing[@]} == 0)) && return 0
-  echo "build-iso: missing ${missing[*]}. Install them with:" >&2
-  if [[ $(uname -s) == Darwin ]]; then
-    echo "  brew install xorriso mtools dosfstools gnupg" >&2
-  elif command -v pacman >/dev/null; then
-    echo "  sudo pacman -S --needed libisoburn mtools dosfstools gnupg" >&2
-  elif command -v apt-get >/dev/null; then
-    echo "  sudo apt-get install xorriso mtools dosfstools gnupg" >&2
-  elif command -v dnf >/dev/null; then
-    echo "  sudo dnf install xorriso mtools dosfstools gnupg2" >&2
-  fi
-  exit 1
-}
 
 sha256() {
   if command -v sha256sum >/dev/null; then
@@ -133,7 +139,7 @@ write_files:
     permissions: '0755'
     encoding: b64
     content: $(b64 "$repo/stick/ai-arch")
-  - path: /root/ai-arch/CLAUDE.md
+  - path: /root/.claude/CLAUDE.md
     encoding: b64
     content: $(b64 "$repo/stick/CLAUDE.md")
   - path: /etc/ai-arch.conf
@@ -141,13 +147,13 @@ write_files:
       KEYMAP=$keymap
       XKB_LAYOUT=$xkb_layout
       TIMEZONE=$timezone
-      DESKTOP=$desktop
       FIREFOX=$firefox
   - path: /etc/motd
     append: true
     content: |
 
-      ai-arch: type ai-arch to install Arch Linux with Claude Code.
+      ai-arch: the Claude desktop app opens once this stick is online.
+      Without a network, plug in a cable or connect with iwctl, then type ai-arch.
 runcmd:
   - [mount, -o, 'remount,size=75%', /run/archiso/cowspace]
   - [localectl, set-keymap, '$keymap']

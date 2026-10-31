@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs on the Arch live system. cloud-init calls it once with --prepare to
-# install Claude Code, and the Claude desktop app when the stick was built with
-# it; the person then types ai-arch to start the install.
+# install Claude Code and the Claude desktop app and open the app; ai-arch opens
+# it again, and ai-arch --console runs Claude Code on the console instead.
 set -uo pipefail
 
 export HOME=/root
@@ -77,8 +77,8 @@ install_desktop() {
   id "$desktop_user" >/dev/null 2>&1 || useradd -m -G wheel,video,input,audio "$desktop_user" || return 1
   echo "$desktop_user ALL=(ALL:ALL) NOPASSWD: ALL" >/etc/sudoers.d/ai-arch
   chmod 440 /etc/sudoers.d/ai-arch
-  install -d -o "$desktop_user" -g "$desktop_user" "/home/$desktop_user/ai-arch"
-  install -m 644 -o "$desktop_user" -g "$desktop_user" "$workdir/CLAUDE.md" "/home/$desktop_user/ai-arch/"
+  install -d -o "$desktop_user" -g "$desktop_user" "/home/$desktop_user/ai-arch" "/home/$desktop_user/.claude"
+  install -m 644 -o "$desktop_user" -g "$desktop_user" /root/.claude/CLAUDE.md "/home/$desktop_user/.claude/"
 
   cat >/etc/pam.d/ai-arch-desktop <<'EOF'
 auth     required pam_unix.so nullok
@@ -180,16 +180,12 @@ EOF
   read -rp 'Press Enter to log in on this console anyway, or Ctrl+C to stop. ' _
 }
 
-desktop=$(conf DESKTOP)
-
 if [[ ${1:-} == --prepare ]]; then
   take_token
   if ! install_claude >/var/log/ai-arch-prepare.log 2>&1; then
     wall 'ai-arch: no internet yet. Plug in a cable or connect with iwctl, then type ai-arch.'
-  elif [[ $desktop != yes ]]; then
-    wall 'ai-arch: Claude Code is ready. Type ai-arch to start the install.'
   elif install_desktop >>/var/log/ai-arch-prepare.log 2>&1; then
-    wall 'ai-arch: the Claude desktop app is ready. Type ai-arch to open it.'
+    systemctl start --no-block ai-arch-desktop
   else
     wall 'ai-arch: the desktop app did not install; see /var/log/ai-arch-prepare.log. Type ai-arch --console to use Claude Code here.'
   fi
@@ -202,18 +198,8 @@ until install_claude; do
   read -rp 'Press Enter to try again, or Ctrl+C to stop. ' _
 done
 
-if [[ $desktop == yes && ${1:-} != --console ]]; then
+if [[ ${1:-} != --console ]]; then
   install_desktop || { echo 'ai-arch: the desktop app did not install. Type ai-arch --console to use Claude Code here.'; exit 1; }
-  cat <<'EOF'
-
-The Claude desktop app opens on this screen.
-  1. Sign in. With email, open the sign-in link on your phone and type the code it shows.
-  2. Open the Code tab, pick the folder ai-arch in your home folder and say: start
-
-Ctrl+Alt+F1 comes back to this console, Ctrl+Alt+F7 to the app.
-ai-arch --console starts Claude Code on this console instead.
-EOF
-  read -rp 'Press Enter to open the app. ' _
   systemctl restart ai-arch-desktop
   exit 0
 fi
@@ -224,5 +210,6 @@ if [[ -z ${CLAUDE_CODE_OAUTH_TOKEN:-} && -z ${SSH_CONNECTION:-} && ! -s /root/.c
   login_hint
 fi
 
+mkdir -p "$workdir"
 cd "$workdir" || exit 1
-exec claude "Read CLAUDE.md in this folder and start."
+exec claude "Install Arch Linux on this machine."

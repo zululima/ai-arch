@@ -16,10 +16,12 @@ the result goes stale.
 
 ## Logging in to Claude on the stick
 
-The live console has no clipboard, and a login link is too long to type, so the stick needs a way
-in that skips the link.
+The stick runs Claude in Anthropic's desktop app, which signs in in its own window: by email, or
+with Google or SSO through Firefox when the stick has it. Claude Code on the console is the
+fallback when the app fails, and it needs a way in that skips the login link, since the console
+has no clipboard and the link is too long to type.
 
-- **A token from `claude setup-token` (default).** Claude Code documents it for machines without
+- **A token from `claude setup-token` (optional).** Claude Code documents it for machines without
   a browser: it lasts a year, can only make model requests and is read from
   `CLAUDE_CODE_OAUTH_TOKEN`. The person saves it with `scripts/save-token.sh`, so it never passes
   through Claude. The ISO that holds it is mode 600 and `write-stick.sh` deletes it after
@@ -36,15 +38,16 @@ in that skips the link.
 - **Copying `~/.claude/.credentials.json`** is not offered. It is a full login rather than a token
   for model requests only, Claude Code manages it through `/login` and `/logout` only, and macOS
   keeps it in the Keychain instead. Two machines holding one login may also log each other out
-  when one of them refreshes it; that is not checked.
-- **The desktop app (optional).** The app signs in on its own, in its window; see below. The
-  ISO's text browser, lynx, cannot run the JavaScript that the claude.ai login page needs.
+  when one of them refreshes it; that is not checked. The ISO's text browser, lynx, cannot run
+  the JavaScript that the claude.ai login page needs.
 
 ## The desktop app on the stick
 
-With `--desktop`, the stick runs Claude in Anthropic's desktop app instead of on the console. It
-gives Claude a browser, which the ArchWiki needs, since it answers plain downloads with a bot
-check. Nothing of it reaches the installed system.
+The app gives Claude a browser, which the ArchWiki needs, since it answers plain downloads with a
+bot check, and the person a window with a terminal, where they run archinstall and type its
+passwords. Nothing of it reaches the installed system. Once cloud-init has installed it at boot,
+the launcher opens it, and the install procedure is the `claude` user's own CLAUDE.md, so a Code
+session in any folder follows it when the person says "install arch".
 
 - **Source.** Anthropic publishes the app for Debian and Ubuntu only and sends Arch users to the
   CLI, so on Arch it runs unsupported. The stick takes the newest `.deb` from Anthropic's apt
@@ -75,8 +78,8 @@ check. Nothing of it reaches the installed system.
 
 The live system keeps changes in a RAM disk of 256 MB by default (`cow_spacesize` in
 mkinitcpio-archiso), and Claude Code alone takes about 260 MB. cloud-init grows that RAM disk to
-75% of the machine's memory before installing Claude Code. Nothing persists between boots: each
-boot installs Claude Code again and asks for a login again.
+75% of the machine's memory before installing Claude Code and the app. Nothing persists between
+boots: each boot installs them again and asks for a sign-in again.
 
 ## Rough edges
 

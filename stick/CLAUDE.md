@@ -1,10 +1,12 @@
 # Install Arch Linux on this machine
 
-You run on the official Arch Linux live system, booted from a USB stick that ai-arch made: as
-root on the console, or in the Claude desktop app as the user `claude`, who has sudo without a
-password. In the app, run every command that needs root with `sudo`, and read web pages such as
-the ArchWiki in the app's browser, since the ArchWiki answers plain downloads with a bot check.
-Your job is to install Arch on this machine the way the person here wants it.
+You run on the official Arch Linux live system, booted from a USB stick that ai-arch made: in the
+Claude desktop app as the user `claude`, who has sudo without a password, or as root on the
+console when the app failed. In the app, run every command that needs root with `sudo`, and read
+web pages such as the ArchWiki in the app's browser, since the ArchWiki answers plain downloads
+with a bot check. Your job is to install Arch on this machine the way the person here wants it.
+This is your user CLAUDE.md, so it applies in whatever folder the session opened; keep your files
+in `~/ai-arch`.
 
 ## Rules
 
@@ -48,15 +50,16 @@ Your job is to install Arch on this machine the way the person here wants it.
    found; hostname; user name; shell; other apps. Skip what the answers already settle.
 6. Turn each app into a package name, checked with `pacman -Ss` or
    https://archlinux.org/packages/, and if the official repositories lack it, at
-   https://aur.archlinux.org. Write `config.json` for archinstall in this folder with those
+   https://aur.archlinux.org. Write `~/ai-arch/config.json` for archinstall with those
    choices and no credentials: packages from the official repositories go in its `packages`
    list, and when any app is only in the AUR, such as `claude-desktop`, add `base-devel` and
    `git` there too. Show a short summary of it, with the AUR apps listed apart.
-7. Give the person this command to run themselves on a second console: Alt+F2 (Ctrl+Alt+F2 from
-   the desktop app), log in as `root` with no password, and run
-   `archinstall --config <this folder>/config.json`. Alt+F1 comes back to the console, Alt+F7 to
-   the app. Over SSH, a second SSH session does the same. In archinstall's menu they set the root
-   and user passwords, check the disk layout and start the install.
+7. Give the person the command to run themselves in the session's terminal, which Terminal in
+   the session's title bar opens: `sudo archinstall --config ~/ai-arch/config.json`. In
+   archinstall's menu they set the root and user passwords, check the disk layout and start the
+   install. On the console, they run `archinstall --config /root/ai-arch/config.json` on a second
+   console instead: Alt+F2, log in as `root` with no password, and Alt+F1 comes back. Over SSH, a
+   second SSH session does the same.
 8. When it finishes, install the AUR apps, which archinstall cannot. Anyone can upload to the
    AUR, so before each one show its AUR page's maintainer, votes and last update and where its
    PKGBUILD downloads from, and build it only on the person's yes. Build it inside the installed
@@ -73,7 +76,7 @@ Your job is to install Arch on this machine the way the person here wants it.
     archiso does when the machine has 2 GiB more free RAM than the image: then
     `/run/archiso/bootmnt` does not exist. If it does, the live system still reads from the
     stick, so they format it later on another machine. Show the stick's `/dev/disk/by-id/` name,
-    size and model, and once they have typed the name back, give them the command to run on the
-    second console: `wipefs -a <stick> && echo type=7 | sfdisk <stick> && udevadm settle &&
-    mkfs.exfat -L <label> <stick>-part1`. On the console, ask now for the token's revoke
-    (step 2). Then tell them to remove the stick and reboot.
+    size and model, and once they have typed the name back, run `wipefs -a <stick> &&
+    echo type=7 | sfdisk <stick> && udevadm settle && mkfs.exfat -L <label> <stick>-part1` as
+    root. On the console, ask now for the token's revoke (step 2). Then tell them to remove the
+    stick and reboot.
