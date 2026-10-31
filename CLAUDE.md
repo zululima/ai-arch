@@ -7,9 +7,11 @@ runs on the machine that builds the stick. `stick/CLAUDE.md` is what Claude foll
 
 1. Run `scripts/host-info.sh`. It prints this machine's keyboard layouts, timezone and SSH public
    keys.
-2. Turn the keyboard layout into a Linux console keymap name, such as `fi`, `us`, `uk`,
-   `de-latin1` or `sv-latin1`. Confirm the keymap and the timezone with the person, one question
-   each, recommended answer first.
+2. Turn the keyboard layout into two names: a Linux console keymap, such as `fi`, `us`, `uk`,
+   `de-latin1` or `sv-latin1`, and an XKB layout for the desktop app and the installed desktop,
+   such as `fi`, `us`, `gb`, `de` or `eu` for EurKEY. A layout the console has no keymap for,
+   such as EurKEY, takes the keymap of the layout it builds on: `us` for EurKEY. Confirm the
+   keyboard and the timezone with the person, one question each, recommended answer first.
 3. Ask whether Claude on the stick runs in the Claude desktop app or on the console. Recommend the
    app: it gives Claude a browser, which the ArchWiki needs, and the person a window to read and
    click in. Say the cost once: each boot downloads about 280 MB, the app from Anthropic's apt
@@ -36,8 +38,8 @@ runs on the machine that builds the stick. `stick/CLAUDE.md` is what Claude foll
    `ssh-add -L | sed -n <n>p > <scratch>/key.pub`.
 6. Say that the ISO is about 1.6 GB before the first download, and ask first on a metered or
    mobile connection.
-7. Run `scripts/build-iso.sh --keymap <keymap> --timezone <zone> [--ssh-key <file>]
-   [--github-keys <user>] [--token-file <file>] [--desktop] [--firefox]`. When it reports
+7. Run `scripts/build-iso.sh --keymap <keymap> --xkb-layout <layout> --timezone <zone>
+   [--ssh-key <file>] [--github-keys <user>] [--token-file <file>] [--desktop] [--firefox]`. When it reports
    missing tools, it prints the install command: ask the person before installing anything.
 8. Give the person the write step, which they run in their own terminal because it needs sudo
    and erases a disk: `<repo>/scripts/write-stick.sh <iso>`. Never run it yourself, and never run
@@ -55,5 +57,6 @@ runs on the machine that builds the stick. `stick/CLAUDE.md` is what Claude foll
 ## Check a change
 
 - `bash -n` and `shellcheck` on every changed script.
-- `scripts/build-iso.sh --keymap us --timezone UTC --cidata-only --out <scratch>` builds only the
-  CIDATA image and `user-data`; check `user-data` with `cloud-init schema --config-file`.
+- `scripts/build-iso.sh --keymap us --xkb-layout us --timezone UTC --cidata-only --out <scratch>`
+  builds only the CIDATA image and `user-data`; check `user-data` with
+  `cloud-init schema --config-file`.

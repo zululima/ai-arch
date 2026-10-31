@@ -52,7 +52,8 @@ check. Nothing of it reaches the installed system.
   full screen. The app refuses to run as root, so a systemd unit starts cage as the user
   `claude` on tty7 with a PAM session, as cage's wiki describes. That user has sudo without a
   password, since the install needs root. `cage -s` lets Ctrl+Alt+F1 and Ctrl+Alt+F2 reach the
-  consoles.
+  consoles. cage takes the keyboard layout from `XKB_DEFAULT_LAYOUT`, set from `--xkb-layout`,
+  since a layout such as EurKEY has no console keymap to follow.
 - **Sign-in.** The token from `setup-token` only works for the CLI, so the app signs in itself on
   every boot; with no keyring it keeps the sign-in until the app closes. With email, a
   third-party guide says the sign-in link opened on another device shows a code to type into the

@@ -11,6 +11,7 @@ signer=${AI_ARCH_SIGNER:-pierre@archlinux.org}
 signer_fpr=${AI_ARCH_SIGNER_FPR:-3E80CA1A8B89F69CBA57D98A76A5EF9054449A5C}
 out=$HOME/Downloads/ai-arch
 keymap=
+xkb_layout=
 timezone=
 ssh_key=
 github_user=
@@ -21,11 +22,13 @@ cidata_only=
 
 usage() {
   cat <<'EOF'
-Usage: build-iso.sh --keymap NAME --timezone ZONE [--ssh-key FILE.pub]
-                    [--github-keys USER] [--token-file FILE] [--desktop]
-                    [--firefox] [--out DIR] [--cidata-only]
+Usage: build-iso.sh --keymap NAME --xkb-layout NAME --timezone ZONE
+                    [--ssh-key FILE.pub] [--github-keys USER] [--token-file FILE]
+                    [--desktop] [--firefox] [--out DIR] [--cidata-only]
 
   --keymap       console keymap for the live system, such as fi, us or de-latin1
+  --xkb-layout   keyboard layout for the desktop app and the installed desktop,
+                 such as fi, us or eu (EurKEY)
   --timezone     zone name, such as Europe/Helsinki
   --ssh-key      public key that may log in as root over SSH
   --github-keys  also allow every public key of this GitHub user
@@ -45,6 +48,7 @@ die() {
 while (($#)); do
   case $1 in
     --keymap) keymap=${2:?--keymap needs a value}; shift 2 ;;
+    --xkb-layout) xkb_layout=${2:?--xkb-layout needs a value}; shift 2 ;;
     --timezone) timezone=${2:?--timezone needs a value}; shift 2 ;;
     --ssh-key) ssh_key=${2:?--ssh-key needs a file}; shift 2 ;;
     --github-keys) github_user=${2:?--github-keys needs a user}; shift 2 ;;
@@ -59,6 +63,7 @@ while (($#)); do
 done
 
 [[ $keymap =~ ^[A-Za-z0-9_.-]+$ ]] || die "give --keymap, such as fi or us"
+[[ $xkb_layout =~ ^[a-z0-9_]+(,[a-z0-9_]+)*$ ]] || die "give --xkb-layout, such as fi, us or eu"
 [[ $timezone =~ ^[A-Za-z0-9_+/-]+$ ]] || die "give --timezone, such as Europe/Helsinki"
 [[ $firefox == no || $desktop == yes ]] || die "--firefox needs --desktop"
 pubkeys=()
@@ -134,6 +139,7 @@ write_files:
   - path: /etc/ai-arch.conf
     content: |
       KEYMAP=$keymap
+      XKB_LAYOUT=$xkb_layout
       TIMEZONE=$timezone
       DESKTOP=$desktop
       FIREFOX=$firefox

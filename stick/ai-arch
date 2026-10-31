@@ -86,6 +86,8 @@ account  required pam_unix.so
 session  required pam_unix.so
 session  required pam_systemd.so
 EOF
+  local layout
+  layout=$(conf XKB_LAYOUT)
   cat >/etc/systemd/system/ai-arch-desktop.service <<EOF
 [Unit]
 Description=Claude desktop app for ai-arch
@@ -97,6 +99,7 @@ Conflicts=getty@tty7.service
 ExecStart=/usr/bin/cage -s -- /usr/bin/claude-desktop --ozone-platform=wayland
 ExecStartPost=+/usr/bin/chvt 7
 User=$desktop_user
+${layout:+Environment=XKB_DEFAULT_LAYOUT=$layout}
 WorkingDirectory=/home/$desktop_user/ai-arch
 UtmpIdentifier=tty7
 UtmpMode=user
