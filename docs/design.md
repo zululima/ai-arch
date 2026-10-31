@@ -24,7 +24,12 @@ in that skips the link.
   `CLAUDE_CODE_OAUTH_TOKEN`. The person saves it with `scripts/save-token.sh`, so it never passes
   through Claude. The ISO that holds it is mode 600 and `write-stick.sh` deletes it after
   writing. On first boot the launcher moves the token from the stick into RAM and removes it from
-  the stick. Until then, anyone holding the stick holds the token.
+  the stick. Until then, anyone holding the stick holds the token, unless the person gave
+  `save-token.sh` a passphrase: then it is gpg's symmetric encryption, and `ai-arch` asks for the
+  passphrase before Claude Code uses it. The CIDATA partition itself cannot be encrypted, since
+  cloud-init reads it at boot before anyone can type. Claude on the stick has the person revoke
+  the token in claude.ai's settings once it is no longer needed: right after the desktop app
+  signs in, or at the end of a console install.
 - **Over SSH from another device (optional).** The stick trusts the SSH keys chosen at build time,
   from a file or from `github.com/<user>.keys`, so `ssh root@archiso.local` works from those
   devices on the same network, and the login link can be copied there.

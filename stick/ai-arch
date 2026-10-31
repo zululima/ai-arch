@@ -117,30 +117,48 @@ EOF
 
 # The token file on the stick is read once, kept in RAM and removed from the
 # stick, so a lost stick no longer carries it.
-load_token() {
-  if [[ ! -s $token_copy && -e /dev/disk/by-label/CIDATA ]]; then
-    local mnt rw=1
-    mnt=$(mktemp -d)
-    if ! mount /dev/disk/by-label/CIDATA "$mnt" 2>/dev/null; then
-      rw=
-      mount -o ro /dev/disk/by-label/CIDATA "$mnt" 2>/dev/null || { rmdir "$mnt"; return 0; }
-    fi
-    if [[ -s $mnt/token ]]; then
-      install -d -m 700 "${token_copy%/*}"
-      (umask 077 && cp "$mnt/token" "$token_copy")
-      if [[ -n $rw ]]; then
-        shred -u "$mnt/token" 2>/dev/null || rm -f "$mnt/token"
-      else
-        echo "ai-arch: could not remove the token from the stick. Erase the stick after the install."
-      fi
-    fi
-    umount "$mnt"
-    rmdir "$mnt"
+take_token() {
+  [[ ! -s $token_copy && -e /dev/disk/by-label/CIDATA ]] || return 0
+  local mnt rw=1
+  mnt=$(mktemp -d)
+  if ! mount /dev/disk/by-label/CIDATA "$mnt" 2>/dev/null; then
+    rw=
+    mount -o ro /dev/disk/by-label/CIDATA "$mnt" 2>/dev/null || { rmdir "$mnt"; return 0; }
   fi
-  if [[ -s $token_copy ]]; then
-    CLAUDE_CODE_OAUTH_TOKEN=$(<"$token_copy")
-    export CLAUDE_CODE_OAUTH_TOKEN
+  if [[ -s $mnt/token ]]; then
+    install -d -m 700 "${token_copy%/*}"
+    (umask 077 && cp "$mnt/token" "$token_copy")
+    if [[ -n $rw ]]; then
+      shred -u "$mnt/token" 2>/dev/null || rm -f "$mnt/token"
+    else
+      echo "ai-arch: could not remove the token from the stick. Erase the stick after the install."
+    fi
   fi
+  umount "$mnt"
+  rmdir "$mnt"
+}
+
+# save-token.sh encrypts the token with gpg when given a passphrase.
+use_token() {
+  [[ -s $token_copy ]] || return 0
+  if [[ $(head -n 1 "$token_copy") == '-----BEGIN PGP MESSAGE-----' ]]; then
+    local gnupg pass token=
+    gnupg=$(mktemp -d)
+    for _ in 1 2 3; do
+      read -rsp 'Passphrase of the Claude login token (Enter to skip): ' pass
+      echo
+      [[ -n $pass ]] || break
+      token=$(gpg --homedir "$gnupg" --batch --quiet --pinentry-mode loopback --passphrase-fd 3 \
+        --decrypt "$token_copy" 3<<<"$pass" 2>/dev/null) && break
+      echo 'ai-arch: that passphrase does not open the token.'
+    done
+    gpgconf --homedir "$gnupg" --kill all 2>/dev/null
+    rm -rf "$gnupg"
+    [[ -n $token ]] || return 0
+    (umask 077 && printf '%s\n' "$token" >"$token_copy")
+  fi
+  CLAUDE_CODE_OAUTH_TOKEN=$(<"$token_copy")
+  export CLAUDE_CODE_OAUTH_TOKEN
 }
 
 login_hint() {
@@ -165,7 +183,7 @@ EOF
 desktop=$(conf DESKTOP)
 
 if [[ ${1:-} == --prepare ]]; then
-  load_token
+  take_token
   if ! install_claude >/var/log/ai-arch-prepare.log 2>&1; then
     wall 'ai-arch: no internet yet. Plug in a cable or connect with iwctl, then type ai-arch.'
   elif [[ $desktop != yes ]]; then
@@ -200,7 +218,8 @@ EOF
   exit 0
 fi
 
-load_token
+take_token
+use_token
 if [[ -z ${CLAUDE_CODE_OAUTH_TOKEN:-} && -z ${SSH_CONNECTION:-} && ! -s /root/.claude/.credentials.json ]]; then
   login_hint
 fi

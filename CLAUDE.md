@@ -25,11 +25,13 @@ runs on the machine that builds the stick. `stick/CLAUDE.md` is what Claude foll
 4. Ask whether the stick should carry a Claude login token, so that Claude on the stick starts
    logged in. Recommend yes: the live console cannot copy a login link, and with the desktop app
    the token keeps the console fallback logged in. Say the cost once: until the stick first
-   boots, whoever holds it holds a token to the person's Claude plan, valid for a year; on first
-   boot the stick moves it into RAM and erases it from itself, and `write-stick.sh` deletes the
-   ISO that holds it. If yes, the person runs
-   `<repo>/scripts/save-token.sh` in their own terminal: it runs `claude setup-token` and asks for
-   the token without showing it. You never run it, and never read, print or copy the token file;
+   boots, whoever holds it holds a token to the person's Claude plan, valid for a year, unless
+   it has a passphrase; on first boot the stick moves it into RAM and erases it from itself,
+   `write-stick.sh` deletes the ISO that holds it, and Claude on the stick has the person revoke
+   it once it is no longer needed. If yes, the person runs `<repo>/scripts/save-token.sh` in
+   their own terminal: it runs `claude setup-token`, asks for the token without showing it, and
+   offers a passphrase, which the stick asks for before Claude uses the token; recommend one of
+   four or more random words. You never run it, and never read, print or copy the token file;
    pass its path, `~/.config/ai-arch/token`, to `--token-file`.
 5. Ask whether they also want to log in over SSH from another device. Recommend no unless they
    bring one up. If yes, the stick has to trust that device's key: `--github-keys <user>` with
