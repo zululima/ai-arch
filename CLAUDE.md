@@ -9,12 +9,12 @@ the stick.
 1. Run `scripts/host-info.sh`, which prints this machine's keyboard layouts, timezone and SSH
    public keys, and `scripts/build-iso.sh --check-tools`. When a build tool is missing, it prints
    the install command, which needs sudo: ask before the person runs it in their own terminal.
-2. Turn the keyboard layout into two names: a Linux console keymap, such as `fi`, `us`, `uk`,
-   `de-latin1` or `sv-latin1`, and an XKB layout for the desktop app and the installed desktop,
-   such as `fi`, `us`, `gb`, `de` or `eu` for EurKEY. A layout the console has no keymap for,
-   such as EurKEY, takes the keymap of the layout it builds on: `us` for EurKEY. Say in one line
-   the keyboard and the timezone you take from this machine and go on; ask only when
-   `host-info.sh` found no layout, or several.
+2. Ask which keyboard layout the stick should use, recommending the one `host-info.sh` found,
+   then ask whether the timezone it detected is right. Turn the layout into two names: a Linux
+   console keymap, such as `fi`, `us`, `uk`, `de-latin1` or `sv-latin1`, and an XKB layout for
+   the desktop app and the installed desktop, such as `fi`, `us`, `gb`, `de` or `eu` for EurKEY.
+   A layout the console has no keymap for, such as EurKEY, takes the keymap of the layout it
+   builds on: `us` for EurKEY.
 3. Say that the ISO is about 1.6 GB before the first download, and ask first on a metered or
    mobile connection.
 4. Run `scripts/build-iso.sh --keymap <keymap> --xkb-layout <layout> --timezone <zone>`, with an
