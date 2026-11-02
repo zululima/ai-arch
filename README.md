@@ -10,7 +10,7 @@ An Arch Linux install USB stick that boots into the Claude desktop app, where Cl
 3. Boot from the stick with Secure Boot off and a network cable in. The Claude desktop app opens.
 4. Sign in by email, open the Code tab and say "install arch". Claude asks what you want on the new system.
 5. Run archinstall in the app's terminal with the config Claude wrote, and type your passwords there.
-6. Claude adds your apps from the AUR, offers to format the stick as exFAT, and you reboot.
+6. Claude adds your apps, Flatpak first and AUR last, formats the stick as exFAT for Windows, and you reboot.
 
 | Part | What it does |
 | --- | --- |
