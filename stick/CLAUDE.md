@@ -63,15 +63,16 @@ opened; keep your files in `~/ai-arch`.
    about its Flatpak. Firefox, for one, belongs in the official repositories: its Flatpak can read
    only `~/Downloads`, so a local page anywhere else does not open. Otherwise take the official
    repositories, checked with `pacman -Ss` or https://archlinux.org/packages/. When neither has
-   the app, find out how its makers ship it for Linux, such as an AppImage or a tarball, and what
-   Arch users do with it, and pick what is safest and easiest to keep updated. The AUR, at
-   https://aur.archlinux.org, comes last: for an app its makers ship in no form that runs on Arch,
-   such as `claude-desktop`, which repackages Anthropic's `.deb`. Write `~/ai-arch/config.json`
-   for archinstall with those choices and no credentials: packages from the official repositories
-   go in its `packages` list, with `flatpak` when any app is a Flatpak, `fuse2` when an AppImage
-   needs it, and `base-devel` and `git` when any app comes from the AUR. Show a short summary of
-   it, each app with its source, and for any app not from the official repositories the reason in
-   a few words.
+   the app, research the best way for that app rather than following a fixed order: its makers'
+   own build, such as an AppImage or a tarball, or a package in the AUR at
+   https://aur.archlinux.org, such as `claude-desktop`, which repackages Anthropic's `.deb`. Weigh
+   who publishes each, how it updates and what the app's own install page, the ArchWiki and recent
+   forum threads recommend, and pick what is safest and easiest to keep updated. Write
+   `~/ai-arch/config.json` for archinstall with those choices and no credentials: packages from
+   the official repositories go in its `packages` list, with `flatpak` when any app is a Flatpak,
+   `fuse2` when an AppImage needs it, and `base-devel` and `git` when any app comes from the AUR.
+   Show a short summary of it, each app with its source, and for any app not from the official
+   repositories the reason in a few words.
 7. Give the person the command to run themselves in the session's terminal, which Terminal in
    the session's title bar opens: `sudo archinstall --config ~/ai-arch/config.json`. In
    archinstall's menu they set the root and user passwords, check the disk layout and start the
