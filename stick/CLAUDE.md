@@ -62,39 +62,46 @@ opened; keep your files in `~/ai-arch`.
    is verified, and what the app's own install page, the ArchWiki and recent forum threads say
    about its Flatpak. Firefox, for one, belongs in the official repositories: its Flatpak can read
    only `~/Downloads`, so a local page anywhere else does not open. Otherwise take the official
-   repositories, checked with `pacman -Ss` or https://archlinux.org/packages/, and the AUR, at
-   https://aur.archlinux.org, only when neither has the app. Write `~/ai-arch/config.json` for
-   archinstall with those choices and no credentials: packages from the official repositories go
-   in its `packages` list, with `flatpak` when any app is a Flatpak, and `base-devel` and `git`
-   when any is only in the AUR, such as `claude-desktop`. Show a short summary of it, each app with
-   its source, and for a Flatpak or an AUR app the reason in a few words.
+   repositories, checked with `pacman -Ss` or https://archlinux.org/packages/. When neither has
+   the app, find out how its makers ship it for Linux, such as an AppImage or a tarball, and what
+   Arch users do with it, and pick what is safest and easiest to keep updated. The AUR, at
+   https://aur.archlinux.org, comes last: for an app its makers ship in no form that runs on Arch,
+   such as `claude-desktop`, which repackages Anthropic's `.deb`. Write `~/ai-arch/config.json`
+   for archinstall with those choices and no credentials: packages from the official repositories
+   go in its `packages` list, with `flatpak` when any app is a Flatpak, `fuse2` when an AppImage
+   needs it, and `base-devel` and `git` when any app comes from the AUR. Show a short summary of
+   it, each app with its source, and for any app not from the official repositories the reason in
+   a few words.
 7. Give the person the command to run themselves in the session's terminal, which Terminal in
    the session's title bar opens: `sudo archinstall --config ~/ai-arch/config.json`. In
    archinstall's menu they set the root and user passwords, check the disk layout and start the
    install. On the console, they run `archinstall --config /root/ai-arch/config.json` on a second
    console instead: Alt+F2, log in as `root` with no password, and Alt+F1 comes back. Over SSH, a
    second SSH session does the same.
-8. When it finishes, install the Flatpaks and then the AUR apps, which archinstall cannot. Arch's
-   `flatpak` package sets up Flathub, so each Flatpak goes in system-wide with
-   `arch-chroot /mnt flatpak install --system --noninteractive flathub <app id>`. Anyone can
-   upload to the AUR, so before each AUR app show its page's maintainer, votes and last update and
-   where its PKGBUILD downloads from, and build it only on the person's yes. Build it inside the
-   installed system as the new user, never as root: clone
-   `https://aur.archlinux.org/<package>.git` into their home with
-   `arch-chroot /mnt runuser -u <user> -- ...`, install the `depends` and `makedepends` from its
-   `.SRCINFO` with `arch-chroot /mnt pacman -S --needed --asdeps`, run `makepkg` as the user, then
-   `arch-chroot /mnt pacman -U` the package it built. A dependency that is itself only in the AUR
-   is built the same way first. Tell them that AUR apps do not update with `pacman -Syu`, and
-   offer an AUR helper such as paru, built the same way.
+8. When it finishes, install the Flatpaks, the makers' own builds and then the AUR apps, which
+   archinstall cannot. Arch's `flatpak` package sets up Flathub, so each Flatpak goes in
+   system-wide with `arch-chroot /mnt flatpak install --system --noninteractive flathub <app id>`.
+   A maker's build comes from their own download page, checked against the checksum or signature
+   they publish, into `/mnt/opt/<app>` with a desktop entry in
+   `/mnt/usr/local/share/applications`; tell the person how it updates. Anyone can upload to the
+   AUR, so before each AUR app show its page's maintainer, votes and last update and where its
+   PKGBUILD downloads from, and build it only on the person's yes. Build it inside the installed
+   system as the new user, never as root: clone `https://aur.archlinux.org/<package>.git` into
+   their home with `arch-chroot /mnt runuser -u <user> -- ...`, install the `depends` and
+   `makedepends` from its `.SRCINFO` with `arch-chroot /mnt pacman -S --needed --asdeps`, run
+   `makepkg` as the user, then `arch-chroot /mnt pacman -U` the package it built. A dependency
+   that is itself only in the AUR is built the same way first. Tell them that AUR apps do not
+   update with `pacman -Syu`, and offer an AUR helper such as paru, built the same way.
 9. Offer to install Claude Code for the new user inside the installed system:
    `arch-chroot /mnt runuser -u <user> -- bash -lc 'curl -fsSL https://claude.ai/install.sh | bash'`.
-10. Offer to format the stick for everyday use, laid out as Windows lays out an exFAT stick: an
-    MBR partition table with one partition of type 7 (HPFS/NTFS/exFAT) holding exFAT, which
-    Windows, macOS and Linux all read. That works only when the live system copied itself into
-    RAM at boot, which archiso does when the machine has 2 GiB more free RAM than the image: then
-    `/run/archiso/bootmnt` does not exist. If it does, the live system still reads from the
-    stick, so they format it later on another machine. Show the stick's `/dev/disk/by-id/` name,
-    size and model, ask for a label of at most 11 characters, and once they have typed the name
-    back, run `wipefs -a <stick> && printf 'label: dos\ntype=7\n' | sfdisk <stick> &&
-    udevadm settle && mkfs.exfat -L <label> <stick>-part1` as root. On the console, ask now for
-    the token's revoke (step 2). Then tell them to remove the stick and reboot.
+10. Offer to format the stick for everyday use: a GPT partition table with one exFAT partition,
+    which Linux reads natively, and the partition type Microsoft basic data, the one extra that
+    Windows needs to give it a drive letter; macOS reads it too. That works only when the live
+    system copied itself into RAM at boot, which archiso does when the machine has 2 GiB more free
+    RAM than the image: then `/run/archiso/bootmnt` does not exist. If it does, the live system
+    still reads from the stick, so they format it later on another machine. Show the stick's
+    `/dev/disk/by-id/` name, size and model, ask for a label of at most 11 characters, and once
+    they have typed the name back, run `wipefs -a <stick> && printf
+    'label: gpt\ntype=EBD0A0A2-B9E5-4433-87C0-68B6B72699C7\n' | sfdisk <stick> && udevadm settle
+    && mkfs.exfat -L <label> <stick>-part1` as root. On the console, ask now for the token's
+    revoke (step 2). Then tell them to remove the stick and reboot.

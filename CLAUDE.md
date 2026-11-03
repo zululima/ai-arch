@@ -25,9 +25,10 @@ follows on the stick.
 6. Tell them how it goes on the stick. They boot it with the firmware's boot menu key (often
    F11, F12 or F8) and Secure Boot off, since the official ISO does not support it, with a network
    cable in. The stick installs the Claude desktop app and Google Chrome, a few minutes, and opens
-   them side by side. They sign in by email in the app and on the Claude sign-in tab that the
-   Claude in Chrome extension opens, open the app's Code tab and say "install arch". Without a
-   network at boot, they connect on the console, with `iwctl` for Wi-Fi, and type `ai-arch`.
+   them side by side. They sign in by email or with Google in the app and on the Claude sign-in
+   tab that the Claude in Chrome extension opens, open the app's Code tab and say "install arch".
+   Without a network at boot, they connect on the console, with `iwctl` for Wi-Fi, and type
+   `ai-arch`.
 
 ## Options
 

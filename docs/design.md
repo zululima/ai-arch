@@ -77,7 +77,10 @@ any folder follows it when the person says "install arch".
   every boot; with no keyring it keeps the sign-in until the app closes. With email, a
   third-party guide says the sign-in link opened on another device shows a code to type into the
   app; that is not checked. Google and SSO open Chrome, which `mimeapps.list` makes the default
-  browser. The person signs in to the extension too, on the tab it opens.
+  browser. The app's code takes the Google sign-in back as a `claude://` link, which Chrome hands
+  to `xdg-open` and `xdg-open` to the app's own `.desktop` entry, since that claims the scheme. A
+  policy lets claude.ai open such links without Chrome asking first. The person signs in to the
+  extension too, on the tab it opens.
 - **Cost.** In an amd64 Arch container, the app and its libraries were 122 MB of packages and a
   161 MB `.deb`, took about 1.1 GB once unpacked, and the running app about 1.4 GB more. Chrome
   adds a 146 MB `.deb` that unpacks to about 450 MB, and sway a few MB. The ISO already has some of
@@ -85,9 +88,10 @@ any folder follows it when the person says "install arch".
 - **Tested.** In that container, the prepare step installed and verified both packages and
   refused Chrome's repository under the app's key. sway on a headless output showed the app and
   Chrome side by side, the extension installed itself and opened its sign-in tab, and the
-  restart command in `stick/CLAUDE.md` brought Chrome back. Docker blocks the sandboxes, so the
-  apps ran with `--no-sandbox`; the stick runs with them. The systemd unit, the VT switch, both
-  sign-ins and Claude Code reaching the extension have not run.
+  restart command in `stick/CLAUDE.md` brought Chrome back. Chrome also passed a `claude://` link
+  from a page the policy allows to a stand-in for the app, without asking. Docker blocks the
+  sandboxes, so the apps ran with `--no-sandbox`; the stick runs with them. The systemd unit, the
+  VT switch, both sign-ins and Claude Code reaching the extension have not run.
 
 ## Memory
 

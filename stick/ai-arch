@@ -89,7 +89,8 @@ install_desktop() {
   install -d /etc/opt/chrome/policies/managed
   cat >/etc/opt/chrome/policies/managed/ai-arch.json <<EOF
 {"ExtensionSettings": {"$chrome_extension": {"installation_mode": "force_installed",
-  "update_url": "https://clients2.google.com/service/update2/crx", "toolbar_pin": "force_pinned"}}}
+  "update_url": "https://clients2.google.com/service/update2/crx", "toolbar_pin": "force_pinned"}},
+ "AutoLaunchProtocolsFromOrigins": [{"protocol": "claude", "allowed_origins": ["https://claude.ai"]}]}
 EOF
 
   id "$desktop_user" >/dev/null 2>&1 || useradd -m -G wheel,video,input,audio "$desktop_user" || return 1
