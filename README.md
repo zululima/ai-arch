@@ -7,8 +7,8 @@ An Arch Linux install USB stick that boots into the Claude desktop app, where Cl
    clone https://github.com/zululima/ai-arch into ~/Projects/ai-arch, read its CLAUDE.md and make me an arch install usb stick
    ```
 2. Claude asks your keyboard layout, checks the timezone it detected, and you write the image to the stick.
-3. Boot from the stick with Secure Boot off and a network cable in. The Claude desktop app opens.
-4. Sign in by email, open the Code tab and say "install arch". Claude asks what you want on the new system.
+3. Boot from the stick with Secure Boot off and a network cable in. The Claude desktop app and Chrome open.
+4. Sign in by email in both, open the app's Code tab and say "install arch". Claude asks what you want.
 5. Run archinstall in the app's terminal with the config Claude wrote, and type your passwords there.
 6. Claude adds your apps, Flatpak first and AUR last, formats the stick as exFAT for Windows, and you reboot.
 
@@ -16,7 +16,7 @@ An Arch Linux install USB stick that boots into the Claude desktop app, where Cl
 | --- | --- |
 | `scripts/build-iso.sh` | downloads and verifies the ISO, adds the settings partition |
 | `scripts/write-stick.sh` | writes the ISO to the stick; you run it yourself |
-| `stick/ai-arch` | on the stick: installs and opens the Claude desktop app |
+| `stick/ai-arch` | on the stick: installs and opens the Claude desktop app and Chrome |
 | `stick/CLAUDE.md` | on the stick: the install procedure Claude follows |
 
 A full boot is not tested yet. Rough edges: [docs/design.md](docs/design.md). Scripts AGPL-3.0-or-later,

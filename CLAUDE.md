@@ -1,8 +1,8 @@
 # ai-arch
 
-Builds an Arch Linux install USB stick that opens the Claude desktop app on boot. This file is
-what Claude runs on the machine that builds the stick. `stick/CLAUDE.md` is what Claude follows on
-the stick.
+Builds an Arch Linux install USB stick that opens the Claude desktop app and Chrome on boot. This
+file is what Claude runs on the machine that builds the stick. `stick/CLAUDE.md` is what Claude
+follows on the stick.
 
 ## Build a stick
 
@@ -24,14 +24,13 @@ the stick.
    `dd` or anything else that writes to a disk.
 6. Tell them how it goes on the stick. They boot it with the firmware's boot menu key (often
    F11, F12 or F8) and Secure Boot off, since the official ISO does not support it, with a network
-   cable in. The stick installs the Claude desktop app, a few minutes, and opens it. They sign in
-   by email, open the Code tab and say "install arch". Without a network at boot, they connect
-   on the console, with `iwctl` for Wi-Fi, and type `ai-arch`.
+   cable in. The stick installs the Claude desktop app and Google Chrome, a few minutes, and opens
+   them side by side. They sign in by email in the app and on the Claude sign-in tab that the
+   Claude in Chrome extension opens, open the app's Code tab and say "install arch". Without a
+   network at boot, they connect on the console, with `iwctl` for Wi-Fi, and type `ai-arch`.
 
 ## Options
 
-- `--firefox` puts Firefox on the stick, about 90 MB more per boot, for a person who signs in to
-  claude.ai with Google or SSO: the app hands that sign-in to a browser.
 - `--token-file ~/.config/ai-arch/token` logs Claude Code in on the console, the fallback when the
   app fails, where a login link cannot be copied. The person runs
   `<repo>/scripts/save-token.sh` in their own terminal: it runs `claude setup-token`, asks for

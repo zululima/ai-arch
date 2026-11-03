@@ -16,14 +16,13 @@ timezone=
 ssh_key=
 github_user=
 token_file=
-firefox=no
 cidata_only=
 check_tools=
 
 usage() {
   cat <<'EOF'
 Usage: build-iso.sh --keymap NAME --xkb-layout NAME --timezone ZONE
-                    [--firefox] [--token-file FILE] [--ssh-key FILE.pub]
+                    [--token-file FILE] [--ssh-key FILE.pub]
                     [--github-keys USER] [--out DIR] [--cidata-only]
        build-iso.sh --check-tools
 
@@ -34,7 +33,6 @@ Usage: build-iso.sh --keymap NAME --xkb-layout NAME --timezone ZONE
   --ssh-key      public key that may log in as root over SSH
   --github-keys  also allow every public key of this GitHub user
   --token-file   file holding a token from `claude setup-token`
-  --firefox      add Firefox to the stick, for signing in with Google or SSO
   --out          folder for the ISO (default ~/Downloads/ai-arch)
   --cidata-only  build only the small CIDATA image, to check what goes on the stick
   --check-tools  only check that the tools for a build are installed
@@ -54,7 +52,6 @@ while (($#)); do
     --ssh-key) ssh_key=${2:?--ssh-key needs a file}; shift 2 ;;
     --github-keys) github_user=${2:?--github-keys needs a user}; shift 2 ;;
     --token-file) token_file=${2:?--token-file needs a file}; shift 2 ;;
-    --firefox) firefox=yes; shift ;;
     --out) out=${2:?--out needs a folder}; shift 2 ;;
     --cidata-only) cidata_only=1; shift ;;
     --check-tools) check_tools=1; shift ;;
@@ -147,12 +144,11 @@ write_files:
       KEYMAP=$keymap
       XKB_LAYOUT=$xkb_layout
       TIMEZONE=$timezone
-      FIREFOX=$firefox
   - path: /etc/motd
     append: true
     content: |
 
-      ai-arch: the Claude desktop app opens once this stick is online.
+      ai-arch: the Claude desktop app and Chrome open once this stick is online.
       Without a network, plug in a cable or connect with iwctl, then type ai-arch.
 runcmd:
   - [mount, -o, 'remount,size=75%', /run/archiso/cowspace]

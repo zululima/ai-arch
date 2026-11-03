@@ -17,7 +17,7 @@ the result goes stale.
 ## Logging in to Claude on the stick
 
 The stick runs Claude in Anthropic's desktop app, which signs in in its own window: by email, or
-with Google or SSO through Firefox when the stick has it. Claude Code on the console is the
+with Google or SSO through Chrome. Claude Code on the console is the
 fallback when the app fails, and it needs a way in that skips the login link, since the console
 has no clipboard and the link is too long to type.
 
@@ -43,11 +43,12 @@ has no clipboard and the link is too long to type.
 
 ## The desktop app on the stick
 
-The app gives Claude a browser, which the ArchWiki needs, since it answers plain downloads with a
-bot check, and the person a window with a terminal, where they run archinstall and type its
-passwords. Nothing of it reaches the installed system. Once cloud-init has installed it at boot,
-the launcher opens it, and the install procedure is the `claude` user's own CLAUDE.md, so a Code
-session in any folder follows it when the person says "install arch".
+The app gives the person a window with a terminal, where they run archinstall and type its
+passwords. Google Chrome beside it gives Claude a browser through Claude in Chrome: the ArchWiki
+answers plain downloads with a bot check, and some sites block the app's own browser. Nothing of
+either reaches the installed system. Once cloud-init has installed them at boot, the launcher
+opens them, and the install procedure is the `claude` user's own CLAUDE.md, so a Code session in
+any folder follows it when the person says "install arch".
 
 - **Source.** Anthropic publishes the app for Debian and Ubuntu only and sends Arch users to the
   CLI, so on Arch it runs unsupported. The stick takes the newest `.deb` from Anthropic's apt
@@ -56,23 +57,37 @@ session in any folder follows it when the person says "install arch".
   libraries the package depends on with pacman, leaving out the virtual machine that only Cowork
   uses. The AUR package `claude-desktop` does the same repackaging, but building it would need
   `base-devel` in RAM on every boot.
-- **Display.** No desktop environment: cage, a small Wayland kiosk compositor, shows the app
-  full screen. The app refuses to run as root, so a systemd unit starts cage as the user
-  `claude` on tty7 with a PAM session, as cage's wiki describes. That user has sudo without a
-  password, since the install needs root. `cage -s` lets Ctrl+Alt+F1 and Ctrl+Alt+F2 reach the
-  consoles. cage takes the keyboard layout from `XKB_DEFAULT_LAYOUT`, set from `--xkb-layout`,
+- **Chrome.** The stick takes `google-chrome-stable` from Google's apt repository the same way,
+  with Google's Linux package signing key pinned by its primary fingerprint, since Google signs
+  with yearly subkeys. Its libraries are the ones the AUR's `google-chrome` depends on. The
+  unpack skips the archive's own `./` entry, whose mode 750 would otherwise land on `/` and stop
+  every user but root from running anything. A policy in `/etc/opt/chrome/policies/managed`
+  force-installs Claude in Chrome from the Chrome Web Store, and the extension opens its own
+  sign-in tab. Claude Code's Chrome docs give the Linux path of the connection file Chrome reads
+  as it starts, need the extension signed in to the same account, and leave Chrome integration
+  off for a `setup-token` login, so the console fallback has no browser.
+- **Display.** No desktop environment: sway, a tiling Wayland compositor, shows the app and
+  Chrome side by side. cage, which showed the app alone, keeps the newest window on top with no
+  way back to the others. The app refuses to run as root, so a systemd unit starts sway as the
+  user `claude` on tty7 with a PAM session, as cage's wiki describes for its compositor. That user
+  has sudo without a password, since the install needs root. sway itself lets Ctrl+Alt+F1 and
+  Ctrl+Alt+F2 reach the consoles, and its config takes the keyboard layout from `--xkb-layout`,
   since a layout such as EurKEY has no console keymap to follow.
 - **Sign-in.** The token from `setup-token` only works for the CLI, so the app signs in itself on
   every boot; with no keyring it keeps the sign-in until the app closes. With email, a
   third-party guide says the sign-in link opened on another device shows a code to type into the
-  app; that is not checked. Google and SSO open a browser, so `--firefox` adds Firefox.
+  app; that is not checked. Google and SSO open Chrome, which `mimeapps.list` makes the default
+  browser. The person signs in to the extension too, on the tab it opens.
 - **Cost.** In an amd64 Arch container, the app and its libraries were 122 MB of packages and a
-  161 MB `.deb`, took about 1.1 GB once unpacked, and the running app about 1.4 GB more. The
-  ISO already has some of those libraries.
-- **Tested.** In that container, the prepare step installed and verified the app, and cage on a
-  headless output showed its start screen. Docker blocks the app's sandbox, so that test ran
-  with `--no-sandbox`; the stick runs with the sandbox. The systemd unit, the VT switch and the
-  sign-in have not run.
+  161 MB `.deb`, took about 1.1 GB once unpacked, and the running app about 1.4 GB more. Chrome
+  adds a 146 MB `.deb` that unpacks to about 450 MB, and sway a few MB. The ISO already has some of
+  those libraries.
+- **Tested.** In that container, the prepare step installed and verified both packages and
+  refused Chrome's repository under the app's key. sway on a headless output showed the app and
+  Chrome side by side, the extension installed itself and opened its sign-in tab, and the
+  restart command in `stick/CLAUDE.md` brought Chrome back. Docker blocks the sandboxes, so the
+  apps ran with `--no-sandbox`; the stick runs with them. The systemd unit, the VT switch, both
+  sign-ins and Claude Code reaching the extension have not run.
 
 ## Memory
 

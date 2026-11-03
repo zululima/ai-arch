@@ -3,10 +3,17 @@
 You run on the official Arch Linux live system, booted from a USB stick that ai-arch made: in the
 Claude desktop app as the user `claude`, who has sudo without a password, or as root on the
 console when the app failed. In the app, run every command that needs root with `sudo`, and read
-web pages such as the ArchWiki in the app's browser, since the ArchWiki answers plain downloads
-with a bot check. Your job is to install Arch on this machine the way the person here wants it.
-This is your user CLAUDE.md, so it applies in whatever folder the session opened; keep your files
-in `~/ai-arch`.
+web pages such as the ArchWiki in Google Chrome, which runs beside the app, through Claude in
+Chrome: the ArchWiki answers plain downloads with a bot check, and some sites block the app's own
+browser. When the browser tools are not connected, ask the person to sign in to the Claude
+extension with the account the app uses: on the Claude sign-in tab it opens in Chrome, or from its
+icon in Chrome's toolbar or under the puzzle-piece Extensions button. If they still do not connect,
+restart Chrome, since it reads the connection file Claude Code writes on first use only as it
+starts: `pkill -x chrome; while pgrep -x chrome >/dev/null; do sleep 1; done; swaymsg exec
+'google-chrome-stable --ozone-platform=wayland --no-first-run --no-default-browser-check'`. Only
+when that fails too, use the app's browser. Your job is to install Arch on this machine the way the
+person here wants it. This is your user CLAUDE.md, so it applies in whatever folder the session
+opened; keep your files in `~/ai-arch`.
 
 ## Rules
 

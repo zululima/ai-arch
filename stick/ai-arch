@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs on the Arch live system. cloud-init calls it once with --prepare to
-# install Claude Code and the Claude desktop app and open the app; ai-arch opens
-# it again, and ai-arch --console runs Claude Code on the console instead.
+# install Claude Code, the Claude desktop app and Chrome and open the two; ai-arch
+# opens them again, and ai-arch --console runs Claude Code on the console instead.
 set -uo pipefail
 
 export HOME=/root
@@ -12,12 +12,18 @@ desktop_user=claude
 desktop_repo=https://downloads.claude.ai/claude-desktop
 # Anthropic's apt signing key, as the Claude Desktop on Linux docs give it.
 desktop_key_fpr=31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE
+chrome_repo=https://dl.google.com/linux
+# Google's Linux package signing key; it signs with subkeys, and gpg's VALIDSIG
+# line names this primary key too.
+chrome_key_fpr=EB4C1BFD4F042F6DDDCCEC917721F63BD38B4796
+# Claude in Chrome in the Chrome Web Store.
+chrome_extension=fcoeoabgfenejglbffodgkkbkcdhcgfn
 # Arch names for what the app's .deb depends on, without the virtual machine
-# that only Cowork uses.
+# that only Cowork uses, then what the AUR's google-chrome adds to them.
 desktop_packages=(
-  cage sudo ttf-dejavu gtk3 nss alsa-lib at-spi2-core libcups libnotify libsecret
-  libxtst libpipewire mesa bubblewrap socat libseccomp libcap-ng xdg-utils
-  xdg-desktop-portal xdg-desktop-portal-gtk
+  sway xorg-xwayland sudo ttf-dejavu gtk3 nss alsa-lib at-spi2-core libcups libnotify
+  libsecret libxtst libpipewire mesa bubblewrap socat libseccomp libcap-ng xdg-utils
+  xdg-desktop-portal xdg-desktop-portal-gtk libxss ttf-liberation
 )
 
 conf() { sed -n "s/^$1=//p" /etc/ai-arch.conf 2>/dev/null; }
@@ -31,54 +37,73 @@ install_claude() {
   ln -sf /root/.local/bin/claude /usr/local/bin/claude
 }
 
-# Takes the newest .deb from Anthropic's apt repository, checked the way apt
-# checks it: InRelease signed by the pinned key, Packages and the .deb by sha256.
-install_desktop_app() (
+# Takes the newest version of a package from an apt repository, checked the way
+# apt checks it: InRelease signed by the pinned key, Packages and the .deb by
+# sha256. Arguments: repository, key URL, key fingerprint, package.
+install_deb() (
   set -e
+  apt=$1 key=$2 fpr=$3 package=$4
   tmp=$(mktemp -d)
   trap 'gpgconf --homedir "$tmp/gnupg" --kill all 2>/dev/null; rm -rf "$tmp"' EXIT
-  apt=$desktop_repo/apt/stable
-  curl -fsSL -o "$tmp/key.asc" "$desktop_repo/key.asc"
+  curl -fsSL -o "$tmp/key.asc" "$key"
   curl -fsSL -o "$tmp/InRelease" "$apt/dists/stable/InRelease"
   mkdir -m 700 "$tmp/gnupg"
   gpg --homedir "$tmp/gnupg" --quiet --import "$tmp/key.asc"
   status=$(gpg --homedir "$tmp/gnupg" --status-fd 1 --output "$tmp/Release" \
     --decrypt "$tmp/InRelease" 2>/dev/null) || true
-  grep -q "^\[GNUPG:\] VALIDSIG .*$desktop_key_fpr" <<<"$status" ||
-    { echo "ai-arch: the app repository is not signed by $desktop_key_fpr"; exit 1; }
+  grep -q "^\[GNUPG:\] VALIDSIG .*$fpr" <<<"$status" ||
+    { echo "ai-arch: $apt is not signed by $fpr"; exit 1; }
   sum=$(awk '/^SHA256:/ {s = 1; next} /^[^ ]/ {s = 0}
     s && $3 == "main/binary-amd64/Packages" {print $1}' "$tmp/Release")
   curl -fsSL -o "$tmp/Packages" "$apt/dists/stable/main/binary-amd64/Packages"
   [[ -n $sum && $(sha256sum <"$tmp/Packages") == "$sum  -" ]] ||
-    { echo 'ai-arch: the app package index does not match its signed checksum'; exit 1; }
-  newest=$(awk -v RS= '{f = s = ""
-    for (i = 1; i < NF; i++) {if ($i == "Filename:") f = $(i + 1); if ($i == "SHA256:") s = $(i + 1)}
-    if (f && s) print f, s}' "$tmp/Packages" | sort -V | tail -n 1)
+    { echo "ai-arch: the package index of $apt does not match its signed checksum"; exit 1; }
+  newest=$(awk -v RS= -v p="$package" '{f = s = n = ""
+    for (i = 1; i < NF; i++) {
+      if ($i == "Package:" && $(i + 1) == p) n = 1
+      if ($i == "Filename:") f = $(i + 1)
+      if ($i == "SHA256:") s = $(i + 1)
+    }
+    if (n && f && s) print f, s}' "$tmp/Packages" | sort -V | tail -n 1)
+  [[ -n $newest ]] || { echo "ai-arch: $apt has no $package"; exit 1; }
   deb=${newest% *}
   echo "ai-arch: downloading ${deb##*/}"
-  curl -fL --retry 3 -o "$tmp/app.deb" "$apt/$deb"
-  [[ $(sha256sum <"$tmp/app.deb") == "${newest#* }  -" ]] ||
+  curl -fL --retry 3 -o "$tmp/package.deb" "$apt/$deb"
+  [[ $(sha256sum <"$tmp/package.deb") == "${newest#* }  -" ]] ||
     { echo "ai-arch: ${deb##*/} does not match its checksum"; exit 1; }
-  bsdtar -xOf "$tmp/app.deb" 'data.tar*' | bsdtar -xpf - -C /
+  # The rename drops the archive's own ./ entry, whose mode, 750 in Chrome's,
+  # would otherwise land on / and lock every other user out.
+  bsdtar -xOf "$tmp/package.deb" 'data.tar*' | bsdtar -xpf - -C / -s ',^\./$,,'
 )
 
-# The app refuses to run as root, so it runs as its own user in cage, a kiosk
-# compositor, started the way cage's wiki starts it from systemd.
+# The app refuses to run as root, so it runs as its own user in sway, which tiles
+# it beside Chrome, started the way cage's wiki starts a compositor from systemd.
 install_desktop() {
   [[ -e $desktop_ready ]] && return 0
   online || return 1
-  local packages=("${desktop_packages[@]}")
-  [[ $(conf FIREFOX) == yes ]] && packages+=(firefox desktop-file-utils)
-  pacman -Sy --needed --noconfirm "${packages[@]}" || return 1
+  pacman -Sy --needed --noconfirm "${desktop_packages[@]}" || return 1
   find /var/cache/pacman/pkg -type f -delete
-  install_desktop_app || return 1
-  command -v update-desktop-database >/dev/null && update-desktop-database -q
+  install_deb "$desktop_repo/apt/stable" "$desktop_repo/key.asc" "$desktop_key_fpr" claude-desktop || return 1
+  install_deb "$chrome_repo/chrome/deb" "$chrome_repo/linux_signing_key.pub" "$chrome_key_fpr" \
+    google-chrome-stable || return 1
+  install -d /etc/opt/chrome/policies/managed
+  cat >/etc/opt/chrome/policies/managed/ai-arch.json <<EOF
+{"ExtensionSettings": {"$chrome_extension": {"installation_mode": "force_installed",
+  "update_url": "https://clients2.google.com/service/update2/crx", "toolbar_pin": "force_pinned"}}}
+EOF
 
   id "$desktop_user" >/dev/null 2>&1 || useradd -m -G wheel,video,input,audio "$desktop_user" || return 1
   echo "$desktop_user ALL=(ALL:ALL) NOPASSWD: ALL" >/etc/sudoers.d/ai-arch
   chmod 440 /etc/sudoers.d/ai-arch
-  install -d -o "$desktop_user" -g "$desktop_user" "/home/$desktop_user/ai-arch" "/home/$desktop_user/.claude"
+  install -d -o "$desktop_user" -g "$desktop_user" "/home/$desktop_user/ai-arch" "/home/$desktop_user/.claude" \
+    "/home/$desktop_user/.config"
   install -m 644 -o "$desktop_user" -g "$desktop_user" /root/.claude/CLAUDE.md "/home/$desktop_user/.claude/"
+  # The app's Google and SSO sign-in opens a browser through xdg-open.
+  {
+    echo '[Default Applications]'
+    printf '%s=google-chrome.desktop\n' text/html x-scheme-handler/http x-scheme-handler/https
+  } >"/home/$desktop_user/.config/mimeapps.list"
+  chown "$desktop_user:" "/home/$desktop_user/.config/mimeapps.list"
 
   cat >/etc/pam.d/ai-arch-desktop <<'EOF'
 auth     required pam_unix.so nullok
@@ -88,18 +113,23 @@ session  required pam_systemd.so
 EOF
   local layout
   layout=$(conf XKB_LAYOUT)
+  install -d /etc/sway
+  cat >/etc/sway/ai-arch <<EOF
+${layout:+input type:keyboard xkb_layout $layout}
+exec /usr/bin/claude-desktop --ozone-platform=wayland
+exec /usr/bin/google-chrome-stable --ozone-platform=wayland --no-first-run --no-default-browser-check
+EOF
   cat >/etc/systemd/system/ai-arch-desktop.service <<EOF
 [Unit]
-Description=Claude desktop app for ai-arch
+Description=Claude desktop app and Chrome for ai-arch
 Wants=dbus.socket systemd-logind.service
 After=systemd-user-sessions.service dbus.socket systemd-logind.service getty@tty7.service
 Conflicts=getty@tty7.service
 
 [Service]
-ExecStart=/usr/bin/cage -s -- /usr/bin/claude-desktop --ozone-platform=wayland
+ExecStart=/usr/bin/sway -c /etc/sway/ai-arch
 ExecStartPost=+/usr/bin/chvt 7
 User=$desktop_user
-${layout:+Environment=XKB_DEFAULT_LAYOUT=$layout}
 WorkingDirectory=/home/$desktop_user/ai-arch
 UtmpIdentifier=tty7
 UtmpMode=user
