@@ -12,6 +12,8 @@ An Arch Linux install USB stick that boots into the Claude desktop app, where Cl
 5. Run archinstall in the app's terminal with the config Claude wrote, and type your passwords there.
 6. Claude finds the best way to add each app, makes the stick exFAT for Linux and Windows, and you reboot.
 
+To try it in a virtual machine first, end the prompt above with "and let me try it in a vm first".
+
 | Part | What it does |
 | --- | --- |
 | `scripts/build-iso.sh` | downloads and verifies the ISO, adds the settings partition |
@@ -19,5 +21,5 @@ An Arch Linux install USB stick that boots into the Claude desktop app, where Cl
 | `stick/ai-arch` | on the stick: installs and opens the Claude desktop app and Chrome |
 | `stick/CLAUDE.md` | on the stick: the install procedure Claude follows |
 
-A full boot is not tested yet. Rough edges: [docs/design.md](docs/design.md). Scripts AGPL-3.0-or-later,
+Booted in a VM, not yet on a PC. Rough edges: [docs/design.md](docs/design.md). Scripts AGPL-3.0-or-later,
 text [CC BY-SA 4.0](LICENSE-PROSE).

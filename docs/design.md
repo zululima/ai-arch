@@ -91,7 +91,8 @@ any folder follows it when the person says "install arch".
   restart command in `stick/CLAUDE.md` brought Chrome back. Chrome also passed a `claude://` link
   from a page the policy allows to a stand-in for the app, without asking. Docker blocks the
   sandboxes, so the apps ran with `--no-sandbox`; the stick runs with them. The systemd unit, the
-  VT switch, both sign-ins and Claude Code reaching the extension have not run.
+  VT switch and sway on a real display ran in a virtual machine, as below. Both sign-ins and
+  Claude Code reaching the extension have not run.
 
 ## Memory
 
@@ -100,10 +101,27 @@ mkinitcpio-archiso), and Claude Code alone takes about 260 MB. cloud-init grows 
 75% of the machine's memory before installing Claude Code and the app. Nothing persists between
 boots: each boot installs them again and asks for a sign-in again.
 
+## Trying it in a virtual machine
+
+`scripts/test-vm.sh` boots the ISO in QEMU the way a PC boots the stick: UEFI firmware without
+Secure Boot, the ISO as a USB stick on an xHCI controller, where cloud-init finds its CIDATA
+partition as on the real stick, a blank 40 GB virtio disk and a user-mode network. `snapshot=on`
+leaves the ISO file as it was. The disk and the firmware's variables stay in
+`~/.cache/ai-arch-vm`, so a run without the ISO boots what was installed. A QMP socket lets
+`--screenshot` save the screen as a PNG, so Claude can look at the VM without its window. With KVM
+on a Linux PC it runs at close to full speed. A Mac with Apple silicon has no hardware
+virtualisation for an x86 PC, so QEMU emulates one.
+
+- **Tested.** In an arm64 Debian container on a Mac with Apple silicon, emulated, the script
+  booted an ISO built for EurKEY and Europe/Helsinki to sway in about 17 minutes, with the desktop
+  app and Chrome side by side and the extension's sign-in tab open. That ran the prepare step under
+  cloud-init, the systemd unit, the switch to tty7 and sway on virtio-gpu. KVM and QEMU from
+  Homebrew on macOS have not run, and no install has run to its end.
+
 ## Rough edges
 
 - Windows cannot build a stick: it has no `dd`, and Claude Code's shell there cannot write a raw
   disk.
 - The official ISO does not boot with Secure Boot on.
 - Wi-Fi passwords are typed on the stick with `iwctl`, never copied from the build machine.
-- A full boot of a stick has not been tested yet.
+- A full boot has run only in an emulated virtual machine, not yet from a stick on a PC.

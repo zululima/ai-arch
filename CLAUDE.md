@@ -30,6 +30,18 @@ follows on the stick.
    Without a network at boot, they connect on the console, with `iwctl` for Wi-Fi, and type
    `ai-arch`.
 
+## Try it in a VM
+
+When the person wants to try the stick in a virtual machine, build the ISO as in steps 1 to 4 and,
+in place of step 5, run `scripts/test-vm.sh <iso>` in the background. It boots the ISO the way a
+PC boots the stick, with UEFI, Secure Boot off, a network and a blank 40 GB disk, and the person
+goes on in its window from step 6. On a Linux PC with KVM it runs at close to full speed; without
+KVM, as on a Mac with Apple silicon, QEMU emulates the PC and everything takes many times longer.
+When QEMU or its UEFI firmware is missing, the script prints the install command: ask before the
+person runs it in their own terminal. `scripts/test-vm.sh --screenshot` saves the VM's screen as a
+PNG and prints its path, for you to look at. After the install, `scripts/test-vm.sh` with no ISO
+boots the installed disk, which stays in `~/.cache/ai-arch-vm` until the person deletes it.
+
 ## Options
 
 - `--token-file ~/.config/ai-arch/token` logs Claude Code in on the console, the fallback when the
